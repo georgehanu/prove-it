@@ -161,15 +161,50 @@ npm <span class="hljs-built_in">test</span>
   <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
 </footer>
 <script>
+// Some browsers and embedded views refuse the async clipboard API, so fall back to the classic copy
+// command, and if that fails too, select the command so Ctrl+C / Cmd+C works.
+function copyWithCommand(text) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.top = "0";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {}
+  area.remove();
+  return ok;
+}
+function selectCommand(button) {
+  const code = button.parentElement.querySelector("code");
+  if (!code) return;
+  const range = document.createRange();
+  range.selectNodeContents(code);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
-      button.textContent = "Copied";
-    } catch {
-      button.textContent = "Select and copy";
+    const text = button.getAttribute("data-copy");
+    let ok = copyWithCommand(text);
+    if (!ok && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {}
     }
-    setTimeout(() => (button.textContent = "Copy"), 1600);
+    if (ok) {
+      button.textContent = "Copied";
+    } else {
+      selectCommand(button);
+      button.textContent = "Press Ctrl+C";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 2000);
   });
 });
 </script>
