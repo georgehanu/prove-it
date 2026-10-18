@@ -1,0 +1,27 @@
+{
+  "name": "prove-it",
+  "version": "1.0.0",
+  "description": "Your coding agent says it's done. Make it prove it. A Claude Code plugin (skills + hooks) and seven short lessons. By George Hanu.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "George Hanu (https://x.com/georgehanu)",
+  "homepage": "https://georgehanu.github.io/prove-it/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/georgehanu/prove-it.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "demo:test": "cd demo && node --test",
+    "site": "node scripts/build-site.mjs"
+  },
+  "devDependencies": {
+    "highlight.js": "^11.12.0",
+    "marked": "^18.1.0",
+    "marked-highlight": "^2.2.4"
+  }
+}

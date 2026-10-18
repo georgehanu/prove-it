@@ -1,0 +1,4 @@
+node_modules/
+.prove-it/
+*.log
+.DS_Store

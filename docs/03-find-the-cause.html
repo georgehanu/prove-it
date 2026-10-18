@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3: Find the cause, not a patch · Prove It</title>
+<meta name="description" content="Find the cause, not a patch. Checkpoint, reproduce, one hypothesis at a time, prove the cause. Stop after three tries. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/03-find-the-cause.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/03-find-the-cause.html">
+<meta property="og:title" content="Lesson 3: Find the cause, not a patch · Prove It">
+<meta property="og:description" content="Find the cause, not a patch. Checkpoint, reproduce, one hypothesis at a time, prove the cause. Stop after three tries. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 3: Find the cause, not a patch · Prove It">
+<meta name="twitter:description" content="Find the cause, not a patch. Checkpoint, reproduce, one hypothesis at a time, prove the cause. Stop after three tries. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html" aria-current="page"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><span>Demo</span><a class="task" href="https://github.com/georgehanu/prove-it/blob/main/tasks/03-missing-last-page.md">03-missing-last-page.md</a><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/root-cause/SKILL.md">View the code &rarr;</a></div><h1>Lesson 3 · Find the cause, not a patch</h1>
+<p>A bug report comes in. You paste it to the agent. It reads two files, says &quot;I found the issue&quot;, and changes something. The report goes away. A week later a different report comes in, caused by that change.</p>
+<p>Debugging is where agents waste the most of your time, because a plausible patch is cheap to generate and expensive to check. In the <a href="https://survey.stackoverflow.co/2025/ai">Stack Overflow 2025 Developer Survey</a>, 45% of developers said &quot;debugging AI-generated code is more time-consuming&quot;. Part of that is that the agent&#39;s fix often treats the symptom: it special-cases the input from the report, adds a retry, or wraps the failing call in a try/catch.</p>
+<p>There&#39;s no hook for &quot;think before you patch&quot;. This lesson is a skill, a written procedure the agent follows when something is broken.</p>
+<h2>The root-cause skill</h2>
+<p>The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/root-cause/SKILL.md"><code>root-cause</code> skill</a> is eight steps and a stop rule. The steps are ordinary debugging discipline, written down so the agent can&#39;t skip them:</p>
+<ol>
+<li><strong>Checkpoint.</strong> Commit or stash before touching anything, or at least note the commit and <code>git status</code>. Every later step is an experiment, and experiments need a way back.</li>
+<li><strong>Reproduce.</strong> Find the exact command or input that shows the bug, run it, and quote the wrong output. No reproduction, no fix: ask for details instead.</li>
+<li><strong>Shrink it.</strong> Cut the input down to the smallest case that still fails. Ideally that becomes the failing test.</li>
+<li><strong>Hypotheses.</strong> Write two to four possible causes in a scratch file, <code>.prove-it/debug.md</code> (gitignored), each with what you&#39;d expect to see if it were true.</li>
+<li><strong>Test one at a time.</strong> One probe or one change per run. Write the result next to the hypothesis: confirmed or ruled out, with the evidence.</li>
+<li><strong>Prove the cause.</strong> You&#39;ve found it when you can explain the wrong output exactly and switching the cause on and off makes the bug come and go.</li>
+<li><strong>Fix the cause</strong>, at the place where things first go wrong, not where the symptom shows.</li>
+<li><strong>Prove the fix.</strong> The reproduction now gives the right answer, the new test is green, the whole suite is green, and the probes are gone.</li>
+</ol>
+<p>And the stop rule: <strong>after three fixes that didn&#39;t work, stop.</strong> Revert to the checkpoint and report what was reproduced, what was ruled out, and what&#39;s needed. The fourth patch in a row is rarely the one that works. It&#39;s usually built on top of the first three, which were wrong.</p>
+<h3>Why a scratch file</h3>
+<p>Writing hypotheses down sounds like ceremony. It does two jobs. It keeps the agent from going round in circles, because &quot;H2: ruled out, the UI sends page=1&quot; is on the page and won&#39;t be tried again ten minutes later. And it gives you a record you can read in thirty seconds when the agent comes back with a fix: which causes were considered, and what evidence settled each one.</p>
+<p>It also survives compaction. Long debugging sessions are exactly the ones where the conversation gets summarised and details get lost. A file on disk doesn&#39;t.</p>
+<h3>Red flags the skill names</h3>
+<ul>
+<li><strong>&quot;This is a known bug in library X&quot;</strong>, based on one old issue. Ask for matching symptoms and the version you&#39;re on.</li>
+<li><strong>A confident cause that needs a big rewrite.</strong> Prove it on the small case first. Rewrites are expensive to review and often move the bug instead of fixing it.</li>
+<li><strong>A fix that hides the failure</strong>: try/catch around the call, a retry, or an <code>if</code> for the exact input from the report. Lesson 4&#39;s hook catches some of these after the fact. The skill tries to stop them being written.</li>
+</ul>
+<h2>The demo: the missing last page</h2>
+<p><a href="https://github.com/georgehanu/prove-it/blob/main/tasks/03-missing-last-page.md">Task 3</a> is a real-looking bug report: <em>&quot;I have 25 invoices but the list only ever shows 20. There&#39;s no page 3.&quot;</em></p>
+<p>The tests in the demo pass. They only cover a list of exactly 20 invoices, which is why the bug got through. That&#39;s typical: the report is the first evidence you have.</p>
+<p>A patch that makes the report go away without finding the cause looks like this:</p>
+<pre><code class="hljs language-js"><span class="hljs-comment">// &quot;Fix&quot;: always add a page</span>
+<span class="hljs-keyword">const</span> totalPages = <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">floor</span>(items.<span class="hljs-property">length</span> / perPage) + <span class="hljs-number">1</span>;
+</code></pre><p>25 invoices now show three pages. 20 invoices also show three pages now, the last one empty. Nobody tests that case, so it ships.</p>
+<p>Following the skill, the reply looks different:</p>
+<pre><code class="hljs language-text">Repro: paginate(25 items, page 3, 10 per page) -&gt; items: [], totalPages: 2
+H1 totalPages rounds down -&gt; confirmed: Math.floor(25 / 10) = 2 at src/paginate.js:4
+H2 pages start at 0 somewhere -&gt; ruled out: (page - 1) * perPage gives 20 for page 3, correct
+Fix: Math.ceil at src/paginate.js:4
+Proof: new test &quot;25 items make 3 pages, the last has 5&quot; red before, green after
+       existing &quot;20 items make 2 pages&quot; still green; npm test exit 0
+Edge: 0 items -&gt; totalPages 0, page 1 empty, hasNext false (stated and tested)
+</code></pre><p>Seven lines, and you can check each one. The cause is named with <code>file:line</code>. The fix is one character. The edge cases that a careless fix would break are in the test suite now.</p>
+<p>The empty-list case is worth a moment. With <code>Math.ceil</code>, zero invoices gives zero pages, and the page asks for page 1 of 0. Is that right? It depends on your UI. The skill doesn&#39;t answer that for you. It makes the agent notice the question and say what it chose, which is the part you&#39;d otherwise discover in production.</p>
+<h2>Try it</h2>
+<ol>
+<li>Make a fresh copy of the demo (see <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>).</li>
+<li>Paste the bug report from <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/03-missing-last-page.md">task 3</a> to your agent <strong>without</strong> the plugin. Count the edits, and check whether the reply names the line that caused the bug.</li>
+<li>Make a fresh copy, start Claude Code with the plugin, and paste the report again. To be sure the skill loads, ask for it by name: <code>/prove-it:root-cause</code> followed by the report.</li>
+<li>Compare the two diffs. Then add 20 invoices to each version and check page 3.</li>
+</ol>
+<p>In Codex, copy the skills to <code>.agents/skills/</code> and start with <code>$root-cause</code>.</p>
+<h2>Limits</h2>
+<ul>
+<li><strong>A skill is instructions, not enforcement.</strong> Nothing stops the agent from skipping the reproduction. You&#39;ll see it skipped, though: there&#39;s no quoted wrong output and no <code>debug.md</code>. The Stop hook from lesson 1 still makes sure the final suite ran.</li>
+<li><strong>Skills load when the request matches the description</strong>, and matching is fuzzy. &quot;Fix this&quot; might not trigger it, while &quot;bug&quot;, &quot;broken&quot; and &quot;error&quot; usually do. Ask for it by name when it matters.</li>
+<li><strong>Some bugs don&#39;t reproduce on demand</strong>: race conditions, data that only exists in production. The skill&#39;s answer is to stop and ask for what&#39;s needed, which is correct but not satisfying.</li>
+<li><strong>The three-attempt rule counts attempts the agent admits to.</strong> If the session is long and messy, the count gets fuzzy. The checkpoint from step 1 is what saves you either way.</li>
+</ul>
+<p>Next: fixes that hide a failure are one kind of shortcut. <a href="04-catch-the-shortcuts.html">Lesson 4: catch the shortcuts</a>.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><a href="02-tests-that-can-fail.html"><small>&larr; Lesson 2</small>Tests that can fail</a><a class="next" href="04-catch-the-shortcuts.html"><small>Lesson 4 &rarr;</small>Catch the shortcuts</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>

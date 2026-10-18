@@ -1,0 +1,15 @@
+[
+  {
+    "name": "after compaction the five rules come back",
+    "steps": [{ "hook": "remind-after-compact", "input": { "source": "compact" }, "expect": { "includes": ["Done means proven", "Tests must be able to fail", "Find the cause before the fix", "No hidden shortcuts", "a diff someone can review"] } }]
+  },
+  {
+    "name": "a normal startup adds nothing",
+    "steps": [{ "hook": "remind-after-compact", "input": { "source": "startup" }, "expect": { "silent": true } }]
+  },
+  {
+    "name": "disable: [\"remind-after-compact\"] turns it off",
+    "config": { "disable": ["remind-after-compact"] },
+    "steps": [{ "hook": "remind-after-compact", "input": { "source": "compact" }, "expect": { "silent": true } }]
+  }
+]

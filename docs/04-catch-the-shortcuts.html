@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4: Catch the shortcuts · Prove It</title>
+<meta name="description" content="Catch the shortcuts. Empty catches, @ts-ignore, test-only branches and faked returns, flagged with file:line. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/04-catch-the-shortcuts.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/04-catch-the-shortcuts.html">
+<meta property="og:title" content="Lesson 4: Catch the shortcuts · Prove It">
+<meta property="og:description" content="Catch the shortcuts. Empty catches, @ts-ignore, test-only branches and faked returns, flagged with file:line. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 4: Catch the shortcuts · Prove It">
+<meta name="twitter:description" content="Catch the shortcuts. Empty catches, @ts-ignore, test-only branches and faked returns, flagged with file:line. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html" aria-current="page"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><span>Demo</span><a class="task" href="https://github.com/georgehanu/prove-it/blob/main/tasks/04-totals-in-currency.md">04-totals-in-currency.md</a><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/shortcut-check.mjs">View the code &rarr;</a></div><h1>Lesson 4 · Catch the shortcuts</h1>
+<p>Some code is wrong in a way that tests can&#39;t see, because it was written to get past them. An empty <code>catch</code> turns a crash into a silent wrong answer. A <code>@ts-ignore</code> makes the type error go away without fixing it. A branch for <code>NODE_ENV === &#39;test&#39;</code> makes the tests exercise a different path from production. A hardcoded <code>return 1.08</code> with a &quot;temporary&quot; comment passes every check you have.</p>
+<p>Each of these makes code look done. Each is a line or two, easy to miss in a large diff, and agents reach for them when they&#39;re stuck or trying to finish quickly. <a href="https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report">CodeRabbit&#39;s analysis of 470 open-source pull requests</a> found AI-co-authored PRs had about 1.7 times as many issues per PR as human-only ones (10.83 against 6.45). Shortcuts like these are among the easiest of those issues to catch mechanically, so we do.</p>
+<h2>The shortcut-check hook</h2>
+<p><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/shortcut-check.mjs"><code>shortcut-check.mjs</code></a> runs after every edit (<code>PostToolUse</code> on Write, Edit and MultiEdit) to a code file that isn&#39;t a test. It looks only at the lines the agent just <strong>added</strong>, never the whole file. Code that was already there isn&#39;t the agent&#39;s doing, and removing a TODO is good news.</p>
+<p>It looks for:</p>
+<table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Swallowed errors</td>
+<td><code>catch (e) {}</code>, a catch with only a comment in it, <code>.catch(() =&gt; {})</code>, <code>except: pass</code></td>
+</tr>
+<tr>
+<td>Silenced checkers</td>
+<td><code>@ts-ignore</code>, <code>@ts-expect-error</code>, <code>@ts-nocheck</code>, <code>eslint-disable</code>, <code>as any</code>, <code># type: ignore</code>, <code># noqa</code>, <code>//nolint</code></td>
+</tr>
+<tr>
+<td>Test-only branches</td>
+<td><code>process.env.NODE_ENV === &#39;test&#39;</code>, <code>process.env.VITEST</code>, <code>JEST_WORKER_ID</code>, <code>if TESTING:</code>, <code>PYTEST_CURRENT_TEST</code></td>
+</tr>
+<tr>
+<td>Unfinished work</td>
+<td><code>TODO</code>, <code>FIXME</code>, <code>XXX</code>, <code>HACK</code></td>
+</tr>
+<tr>
+<td>Debug leftovers</td>
+<td><code>console.log</code>, <code>console.debug</code>, <code>debugger</code>, Python <code>print(</code> at the start of a line</td>
+</tr>
+<tr>
+<td>Faked results</td>
+<td>a <code>return</code> of a literal within two lines of a comment saying mock, fake, stub, placeholder, hardcoded, dummy, temporary or &quot;for now&quot;</td>
+</tr>
+</tbody></table>
+<p>When it finds something, it doesn&#39;t block. A <code>PostToolUse</code> hook can&#39;t undo the edit anyway: the file is already written. Instead it hands the agent a note through <code>additionalContext</code>, which Claude Code shows the model right next to the tool result:</p>
+<pre><code class="hljs language-text">Prove It noticed shortcuts in lines you just added:
+- src/rates.js:10 a hardcoded return next to a mock/fake/stub note: the result is faked
+- src/rates.js:16 empty catch block: the error is swallowed
+If one is intentional, say why in your summary. If not, fix it now.
+</code></pre><p>Every finding has <code>file:line</code>, so the agent can&#39;t misread which line is meant, and neither can you.</p>
+<h3>Why a note and not a block</h3>
+<p>Many of these are sometimes right. A CLI prints with <code>console.log</code>. A third-party type is wrong and <code>@ts-expect-error</code> with a comment is the honest fix. A <code>catch</code> that deliberately ignores &quot;file not found&quot; is fine. A hook can&#39;t know which case it&#39;s looking at, so it asks the agent to decide in the open: fix it, or say why it stays. The phrase &quot;say why in your summary&quot; matters. It moves the decision from a line in a diff you may not read into the reply you will read.</p>
+<p>The block-or-not split follows what each hook event can do. <code>PreToolUse</code> runs before the edit and can stop it, so guard-tests uses it for the one thing that should never slip through unseen. <code>PostToolUse</code> runs after, can&#39;t undo anything, and is the right place for feedback.</p>
+<h2>The demo: totals in another currency</h2>
+<p><a href="https://github.com/georgehanu/prove-it/blob/main/tasks/04-totals-in-currency.md">Task 4</a> asks for <code>totalIn(invoice, currency)</code> using <code>getRate()</code> from <code>src/rates.js</code>. There is no rates service in the demo. The honest solution takes a moment of design: pass the rate lookup in, stub it in the tests, and let a failed lookup be an error the caller sees.</p>
+<p>The quick solutions are the shortcuts. Here&#39;s an edit an agent made to <code>src/rates.js</code> when asked for a stub, lightly trimmed:</p>
+<pre><code class="hljs language-js">  <span class="hljs-comment">// TEMPORARY STUB: the rates service is down, so EUR-&gt;USD is hardcoded.</span>
+  <span class="hljs-comment">// Remove once the service is back.</span>
+  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">from</span> === <span class="hljs-string">&quot;EUR&quot;</span> &amp;&amp; to === <span class="hljs-string">&quot;USD&quot;</span>) <span class="hljs-keyword">return</span> <span class="hljs-number">1.08</span>;
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> res = <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetchImpl</span>(<span class="hljs-string">`<span class="hljs-subst">${RATES_URL}</span>?from=<span class="hljs-subst">${<span class="hljs-keyword">from</span>}</span>&amp;to=<span class="hljs-subst">${to}</span>`</span>);
+    <span class="hljs-keyword">if</span> (!res.<span class="hljs-property">ok</span>) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Error</span>(<span class="hljs-string">`rate lookup failed: <span class="hljs-subst">${res.status}</span>`</span>);
+    <span class="hljs-keyword">const</span> body = <span class="hljs-keyword">await</span> res.<span class="hljs-title function_">json</span>();
+    <span class="hljs-keyword">return</span> body.<span class="hljs-property">rate</span>;
+  } <span class="hljs-keyword">catch</span> {
+    <span class="hljs-comment">// errors ignored for now; callers get undefined</span>
+  }
+</code></pre><p>Two findings, both real. If the service fails, every caller now gets <code>undefined</code> and multiplies a total by it, producing <code>NaN</code> cents on an invoice. And <code>1.08</code> will still be there in six months, because nothing makes anyone come back to it.</p>
+<p>Notice what the comments do. They&#39;re honest, they explain the shortcut, and they make it look deliberate and harmless. In a 300-line diff you&#39;d read straight past them. The hook doesn&#39;t, and the note it sends makes the agent account for both lines in its summary.</p>
+<h2>Try it</h2>
+<ol>
+<li>Make a fresh copy of the demo (see <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>) and start Claude Code with the plugin.</li>
+<li>Paste the request from <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/04-totals-in-currency.md">task 4</a>.</li>
+<li>Press Ctrl+O to show hook output and look for &quot;Prove It noticed shortcuts&quot;. If nothing fired, the agent may simply have done it properly: check the diff for the honest version (injected lookup, a test for the failure case).</li>
+<li>To see the hook on demand, ask: &quot;add a console.log of the totals in invoiceTotals and leave a TODO to remove it&quot;. You&#39;ll get two findings, and the reply should say both are intentional.</li>
+</ol>
+<h2>Limits</h2>
+<ul>
+<li><strong>It&#39;s pattern matching on added lines.</strong> <code>catch (e) { log(e) }</code> where <code>log</code> does nothing is invisible to it. A faked result without a telling comment is invisible to it. Treat the list as a smoke alarm, not an inspection.</li>
+<li><strong>Code patterns read code only.</strong> <code>as any</code>, empty <code>catch</code> and debug logs are looked for in the code part of a line, so <code>// treat it as any other</code> or a string that mentions <code>console.log()</code> is not flagged. Suppressions and TODOs live in comments, so those are read from the whole line.</li>
+<li><strong>No line numbers without the patch.</strong> Claude Code passes the edit&#39;s patch to the hook, so line numbers are exact. Where it doesn&#39;t, the hook looks for the new text in the file and may give no line.</li>
+<li><strong>Test files are skipped</strong> on purpose. <code>console.log</code> in a test is normal, and lesson 2&#39;s guard covers what matters there.</li>
+<li><strong>Edits through the shell are not seen.</strong> A file rewritten by <code>sed</code> or a script never reaches the hook.</li>
+<li><strong>It can be noisy in some codebases.</strong> A CLI full of intentional <code>console.log</code>, or a codebase that uses TODOs as a backlog. Turn it off with <code>&quot;disable&quot;: [&quot;shortcut-check&quot;]</code> in <code>.prove-it.json</code>, or narrow <code>codeGlobs</code> (lesson 7).</li>
+</ul>
+<p>Next: the shortcuts are easier to see when the diff is small. <a href="05-a-diff-someone-can-review.html">Lesson 5: a diff someone can review</a>.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><a href="03-find-the-cause.html"><small>&larr; Lesson 3</small>Find the cause, not a patch</a><a class="next" href="05-a-diff-someone-can-review.html"><small>Lesson 5 &rarr;</small>A diff someone can review</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>

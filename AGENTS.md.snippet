@@ -1,0 +1,34 @@
+## Prove it
+
+These rules are instructions, not enforcement. An agent can still skip them. Where your tool supports hooks,
+install the Prove It hooks as well: https://github.com/georgehanu/prove-it
+
+1. **Done means proven.** Before saying a change is done, run the project's checks after your last edit
+   (test, lint, typecheck, build). End the reply with:
+
+   ```
+   ## Proof
+   - <requirement> -> `<command>` exit <code>: "<the output line that proves it>"
+   - <requirement> -> not done, because <reason>
+   - Checks: `<command>` exit <code> (<n> passed, <n> failed)
+   - Not verified: <what> (<why>)
+   ```
+
+   Every part of the request gets a line. Never defer part of it silently. Never count a run piped into
+   `tail` or `head` as passing without reading its output.
+
+2. **Tests must be able to fail.** Write the test for new behaviour first and show it failing. Never delete,
+   skip, `.only` or loosen a test, and never change an expected value, to get to green. If a test is wrong,
+   stop and say which one, what it expects, and why the new value is right, with the arithmetic.
+
+3. **Find the cause before the fix.** Checkpoint first (commit or stash). Reproduce, shrink to a minimal case,
+   test one hypothesis at a time with evidence, prove the cause, then fix it and prove the fix. After 3 failed
+   attempts, stop, revert to the checkpoint and report what you learned.
+
+4. **No hidden shortcuts.** No empty catch blocks, no `@ts-ignore` / `eslint-disable` / `as any` /
+   `# type: ignore`, no code paths that only run under test, no hardcoded results, no leftover debug output.
+   If one is truly needed, say why in the summary.
+
+5. **Hand over a diff someone can review.** Keep changes small (about 400 changed lines at most). Do not mix
+   in unrelated edits. Finish with: intent in one sentence, files by risk, the lines to read first
+   (`file:line`), what was tested and how, and what was not.

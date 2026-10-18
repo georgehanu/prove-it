@@ -1,0 +1,588 @@
+[
+  {
+    "name": "empty catch, with the line number from the edit's patch",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/invoice.js",
+            "old_string": "  const rate = loadRate(country);",
+            "new_string": "  let rate = 0;\n  try { rate = loadRate(country); } catch (e) {}"
+          },
+          "tool_response": {
+            "structuredPatch": [
+              {
+                "oldStart": 11,
+                "oldLines": 1,
+                "newStart": 11,
+                "newLines": 2,
+                "lines": [
+                  "-  const rate = loadRate(country);",
+                  "+  let rate = 0;",
+                  "+  try { rate = loadRate(country); } catch (e) {}"
+                ]
+              }
+            ]
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/invoice.js:12 empty catch block",
+            "say why in your summary"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty catch across two lines",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "x();",
+            "new_string": "try {\n  x();\n} catch {\n}"
+          },
+          "tool_response": {
+            "structuredPatch": [
+              {
+                "oldStart": 3,
+                "oldLines": 1,
+                "newStart": 3,
+                "newLines": 4,
+                "lines": [
+                  "-x();",
+                  "+try {",
+                  "+  x();",
+                  "+} catch {",
+                  "+}"
+                ]
+              }
+            ]
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/a.js:5 empty catch block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "@ts-ignore and as any",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/cart.ts",
+            "old_string": "const total = sum(items);",
+            "new_string": "// @ts-ignore\nconst total = sum(items as any);"
+          },
+          "tool_response": {
+            "structuredPatch": [
+              {
+                "oldStart": 20,
+                "oldLines": 1,
+                "newStart": 20,
+                "newLines": 2,
+                "lines": [
+                  "-const total = sum(items);",
+                  "+// @ts-ignore",
+                  "+const total = sum(items as any);"
+                ]
+              }
+            ]
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/cart.ts:20 @ts-ignore",
+            "src/cart.ts:21 `as any`"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "eslint-disable",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "// eslint-disable-next-line no-unused-vars\nconst a = 1;"
+          }
+        },
+        "expect": {
+          "includes": [
+            "eslint-disable"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a test-environment branch",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/dates.js",
+            "old_string": "return addMonths(d, 1);",
+            "new_string": "if (process.env.NODE_ENV === 'test') return '2026-02-28';\nreturn addMonths(d, 1);"
+          }
+        },
+        "expect": {
+          "includes": [
+            "test-environment branch"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "TODO left in",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "// TODO: handle refunds\nconst a = 1;"
+          }
+        },
+        "expect": {
+          "includes": [
+            "TODO/FIXME"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "leftover console.log",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "return t;",
+            "new_string": "console.log('t is', t);\nreturn t;"
+          }
+        },
+        "expect": {
+          "includes": [
+            "console.log"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a hardcoded return next to a 'fake' note",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/rates.js",
+            "old_string": "  return fetchRate(country);",
+            "new_string": "  // fake rate for now, API is down\n  return 0.2;"
+          }
+        },
+        "expect": {
+          "includes": [
+            "hardcoded return"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a stubbed rate and a catch with only a comment in it (seen live)",
+    "files": {
+      "src/rates.js": "// Exchange rates come from the finance team's rates service.\n// In production RATES_URL points at it; there is no service in this demo.\n\nconst RATES_URL = process.env.RATES_URL ?? \"https://rates.invalid/latest\";\n\nexport async function getRate(from, to, fetchImpl = globalThis.fetch) {\n  if (from === to) return 1;\n  // TEMPORARY STUB: the rates service is down, so EUR->USD is hardcoded.\n  // Remove once the service is back.\n  if (from === \"EUR\" && to === \"USD\") return 1.08;\n  try {\n    const res = await fetchImpl(`${RATES_URL}?from=${from}&to=${to}`);\n    if (!res.ok) throw new Error(`rate lookup failed: ${res.status}`);\n    const body = await res.json();\n    return body.rate;\n  } catch {\n    // errors ignored for now; callers get undefined\n  }\n}\n"
+    },
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/rates.js",
+            "old_string": "  const res = await fetchImpl(`${RATES_URL}?from=${from}&to=${to}`);\n  if (!res.ok) throw new Error(`rate lookup failed: ${res.status}`);\n  const body = await res.json();\n  return body.rate;\n}",
+            "new_string": "  // TEMPORARY STUB: the rates service is down, so EUR->USD is hardcoded.\n  // Remove once the service is back.\n  if (from === \"EUR\" && to === \"USD\") return 1.08;\n  try {\n    const res = await fetchImpl(`${RATES_URL}?from=${from}&to=${to}`);\n    if (!res.ok) throw new Error(`rate lookup failed: ${res.status}`);\n    const body = await res.json();\n    return body.rate;\n  } catch {\n    // errors ignored for now; callers get undefined\n  }\n}"
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/rates.js:10 a hardcoded return",
+            "src/rates.js:16 empty catch block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a plain return of a literal is fine",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "  if (!items.length) return null;",
+            "new_string": "  if (!items.length) return 0;\n  return 0;"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "python: except/pass, print, type: ignore",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/app/billing.py",
+            "content": "def total(lines):\n    try:\n        return sum(l.cents for l in lines)  # type: ignore\n    except Exception:\n        pass\n    print('debug', lines)\n"
+          }
+        },
+        "expect": {
+          "includes": [
+            "app/billing.py:3 # type: ignore",
+            "app/billing.py:4 except: pass",
+            "app/billing.py:6 leftover debug output (print)"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "clean code: silent",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "return a + b;",
+            "new_string": "return Math.round(a + b);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "only removed lines are ignored (removing a TODO is good)",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "// TODO: round\nreturn a;",
+            "new_string": "return Math.round(a);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "test files are skipped (guard-tests covers them)",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/a.test.js",
+            "old_string": "a",
+            "new_string": "console.log(result);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "markdown is not code",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/NOTES.md",
+            "content": "TODO: everything\n"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Write of a new file: line numbers from the content",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/src/new.js",
+            "content": "export function f() {\n  return 1;\n}\n// FIXME later\n"
+          },
+          "tool_response": {
+            "type": "create",
+            "structuredPatch": [],
+            "originalFile": null
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/new.js:4 a TODO/FIXME"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Windows path",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "cwd": "C:\\work\\shop",
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "C:\\work\\shop\\src\\Cart.tsx",
+            "old_string": "a",
+            "new_string": "// @ts-expect-error\nconst a = 1;"
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/Cart.tsx",
+            "@ts-expect-error"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "no tool_response: the line number is found in the file on disk",
+    "files": {
+      "src/tax.js": "export function tax(c) {\n  const r = 0.2;\n  try { return c * r; } catch {}\n}\n"
+    },
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/tax.js",
+            "old_string": "  return c * r;",
+            "new_string": "  try { return c * r; } catch {}"
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/tax.js:3 empty catch block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex apply_patch added lines",
+    "files": {
+      "src/a.ts": "const a = 1;\n// @ts-ignore\nconst b: number = 'x';\n"
+    },
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: src/a.ts\n@@\n const a = 1;\n+// @ts-ignore\n+const b: number = 'x';\n*** End Patch"
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/a.ts:2 @ts-ignore"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "disable: [\"shortcut-check\"] turns it off",
+    "config": {
+      "disable": [
+        "shortcut-check"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "// @ts-ignore"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "patterns in comments and strings are not code",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/src/cart.ts",
+            "content": "// treat it as any other line item\nconst hint = 'call console.log() while debugging';\n/* catch {} here would swallow errors */\n * an empty catch {} is never fine\nexport const total = (items: Item[]) => items.reduce((s, i) => s + i.cents, 0); // not as any\n"
+          },
+          "tool_response": {
+            "originalFile": ""
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "code before a trailing comment is still checked; suppressions and TODOs in comments still count",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/src/cart.ts",
+            "content": "const raw = input as any; // the API type is wrong\nconsole.log(raw) // remove later\n// @ts-ignore\nconst n: number = raw.count;\n// TODO: rounding\n"
+          },
+          "tool_response": {
+            "originalFile": ""
+          }
+        },
+        "expect": {
+          "includes": [
+            "src/cart.ts:1 `as any`",
+            "src/cart.ts:2 leftover debug output",
+            "src/cart.ts:3 @ts-ignore",
+            "src/cart.ts:5 a TODO"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "python: # comments are not code, noqa and type: ignore still count",
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/app/tax.py",
+            "content": "# except: pass would hide errors\nrate = 0.2  # print( is not called here\ntotal = compute()  # type: ignore\n"
+          },
+          "tool_response": {
+            "originalFile": ""
+          }
+        },
+        "expect": {
+          "includes": [
+            "app/tax.py:3 # type: ignore"
+          ],
+          "excludes": [
+            "app/tax.py:1",
+            "app/tax.py:2"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "MultiEdit: each edit's added lines are scanned",
+    "files": {
+      "src/a.js": "export function f() {\n  return 1;\n}\nexport function g() {\n  return 2;\n}\n"
+    },
+    "steps": [
+      {
+        "hook": "shortcut-check",
+        "input": {
+          "tool_name": "MultiEdit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "edits": [
+              {
+                "old_string": "  return 1;",
+                "new_string": "  console.log('f');\n  return 1;"
+              },
+              {
+                "old_string": "  return 2;",
+                "new_string": "  try { return 2; } catch {}"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "includes": [
+            "leftover debug output",
+            "empty catch block"
+          ]
+        }
+      }
+    ]
+  }
+]

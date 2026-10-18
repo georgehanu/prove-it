@@ -1,0 +1,1144 @@
+[
+  {
+    "name": "adding a new test passes silently",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/money.test.js",
+            "old_string": "});\n",
+            "new_string": "});\n\ntest('rounds half up', () => {\n  assert.equal(roundCents(10.5), 11);\n});\n"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "removing an assertion asks a person",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "  assert.equal(inv.total, 10800);\n  assert.equal(inv.tax, 800);\n",
+            "new_string": "  assert.equal(inv.total, 10800);\n"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "removes 1 assertion(s) (2 -> 1)",
+            "test/invoice.test.js",
+            "makes the tests weaker"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "adding .skip asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/__tests__/dates.spec.ts",
+            "old_string": "it('handles leap years', () => {",
+            "new_string": "it.skip('handles leap years', () => {"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "adds skip/only/todo",
+            "it.skip"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "adding .only asks (the other tests stop running)",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/cart.test.ts",
+            "old_string": "describe('cart', () => {",
+            "new_string": "describe.only('cart', () => {"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "describe.only"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "node:test { skip: true } option asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/paginate.test.js",
+            "old_string": "test('last page is partial', () => {",
+            "new_string": "test('last page is partial', { skip: true }, () => {"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "adds skip/only/todo"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "xit / xdescribe asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/spec/user_spec.js",
+            "old_string": "it('emails the owner', () => {",
+            "new_string": "xit('emails the owner', () => {"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "pytest skip marker asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/tests/test_billing.py",
+            "old_string": "def test_vat_rounding():",
+            "new_string": "@pytest.mark.skip(reason=\"flaky\")\ndef test_vat_rounding():"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "@pytest.mark.skip"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Go t.Skip asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/pkg/invoice/total_test.go",
+            "old_string": "func TestTotal(t *testing.T) {\n",
+            "new_string": "func TestTotal(t *testing.T) {\n\tt.Skip(\"later\")\n"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "t.Skip"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "replacing a real expectation with expect(true).toBe(true) asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/discount.test.ts",
+            "old_string": "expect(applyDiscount(1000, pct(10))).toBe(900);",
+            "new_string": "expect(true).toBe(true);"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "cannot fail"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "comparing a value with itself asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/money.test.js",
+            "old_string": "assert.equal(total, 1999);",
+            "new_string": "assert.equal(total, total);"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "cannot fail"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "python assert True asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/tests/test_tax.py",
+            "old_string": "    assert tax(100) == 20\n",
+            "new_string": "    assert True\n"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "changing only the expected value asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "  assert.equal(total(order), 1999);",
+            "new_string": "  assert.equal(total(order), 2000);"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "changed an expected value",
+            "1999",
+            "2000",
+            "changes what the tests expect"
+          ],
+          "excludes": [
+            "weaker"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "changing an expected string asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/dates.test.js",
+            "old_string": "expect(dueDate('2026-01-31', 'net-1-month')).toBe('2026-02-28');",
+            "new_string": "expect(dueDate('2026-01-31', 'net-1-month')).toBe('2026-03-03');"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "changed an expected value"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "changing several expected values in one assertion asks (seen live)",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });",
+            "new_string": "  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 789, total: 4539 });"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "changed an expected value",
+            "tax: 789"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "expect(...).toEqual with a changed expected object asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/pager.test.ts",
+            "old_string": "expect(paginate(items, 3, 10)).toEqual({ page: 3, totalPages: 3 });",
+            "new_string": "expect(paginate(items, 3, 10)).toEqual({ page: 3, totalPages: 2 });"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "a tiny fragment with no assertion in it is judged against the whole file (seen live)",
+    "files": {
+      "test/invoice.test.js": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\n\nconst consulting = {\n  lines: [\n    { description: \"Workshop day\", unitCents: 1250, qty: 1 },\n  ],\n  taxRate: 21,\n};\n\ntest(\"invoice totals\", () => {\n  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });\n});\n\ntest(\"totals as an object\", () => {\n  expect(invoiceTotals(consulting)).toEqual({\n    subtotal: 3750,\n    tax: 788,\n  });\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "tax: 788, total: 4538",
+            "new_string": "tax: 789, total: 4539",
+            "replace_all": false
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "changed an expected value"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a line inside a multi-line expected object counts",
+    "files": {
+      "test/invoice.test.js": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\n\nconst consulting = {\n  lines: [\n    { description: \"Workshop day\", unitCents: 1250, qty: 1 },\n  ],\n  taxRate: 21,\n};\n\ntest(\"invoice totals\", () => {\n  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });\n});\n\ntest(\"totals as an object\", () => {\n  expect(invoiceTotals(consulting)).toEqual({\n    subtotal: 3750,\n    tax: 788,\n  });\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "    tax: 788,\n  });",
+            "new_string": "    tax: 789,\n  });"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "changed an expected value"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "changing fixture input data is not an expected value",
+    "files": {
+      "test/invoice.test.js": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\n\nconst consulting = {\n  lines: [\n    { description: \"Workshop day\", unitCents: 1250, qty: 1 },\n  ],\n  taxRate: 21,\n};\n\ntest(\"invoice totals\", () => {\n  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });\n});\n\ntest(\"totals as an object\", () => {\n  expect(invoiceTotals(consulting)).toEqual({\n    subtotal: 3750,\n    tax: 788,\n  });\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "unitCents: 1250",
+            "new_string": "unitCents: 1300"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Windows CRLF file with an LF old_string still resolves",
+    "files": {
+      "test/invoice.test.js": "import { test } from \"node:test\";\r\nimport assert from \"node:assert/strict\";\r\n\r\nconst consulting = {\r\n  lines: [\r\n    { description: \"Workshop day\", unitCents: 1250, qty: 1 },\r\n  ],\r\n  taxRate: 21,\r\n};\r\n\r\ntest(\"invoice totals\", () => {\r\n  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });\r\n});\r\n\r\ntest(\"totals as an object\", () => {\r\n  expect(invoiceTotals(consulting)).toEqual({\r\n    subtotal: 3750,\r\n    tax: 788,\r\n  });\r\n});\r\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 788, total: 4538 });\n});",
+            "new_string": "  assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750, discount: 0, tax: 789, total: 4539 });\n});"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "rewriting a whole case (input and expected) is not flagged",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/invoice.test.js",
+            "old_string": "  assert.equal(lineTotal({ qty: 2, cents: 100 }), 200);",
+            "new_string": "  assert.equal(lineTotal({ qty: 3, cents: 100 }), 300);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "overwriting a test file with fewer tests asks",
+    "files": {
+      "test/paginate.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\ntest('first page', () => { assert.equal(1, 1); });\ntest('middle page', () => { assert.equal(2, 2); });\ntest('last page', () => { assert.equal(3, 3); });\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/test/paginate.test.js",
+            "content": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\ntest('first page', () => { assert.equal(1, 1); });\n"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "removes 2 test(s) (3 -> 1)"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "writing a brand-new test file passes",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/test/new.test.js",
+            "content": "import { test } from 'node:test';\ntest('x', () => {});\n"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "non-test files are not guarded",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/assert.js",
+            "old_string": "assert(x);\nassert(y);",
+            "new_string": "assert(x);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "rm of a test file asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "rm test/invoice.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "deletes test files",
+            "test/invoice.test.js"
+          ],
+          "excludes": [
+            "weaker"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "git rm -r of a tests folder asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git rm -r tests/"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "rm of a glob of spec files asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "rm -f src/*.spec.ts && npm run build"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "rm -rf node_modules dist test-results is fine",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "rm -rf node_modules dist test-results coverage"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "sed -i on a test file asks (the route an agent tried live)",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cd demo && sed -i \"s/tax: 788/tax: 789/\" test/invoice.test.js && npm test"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "rewrites an existing test file from the shell",
+            "can't be checked",
+            "test/invoice.test.js",
+            "use the Edit tool"
+          ],
+          "excludes": [
+            "weaker"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a > redirect onto an existing test file asks, and says what happened",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo \"test('x', () => {})\" > test/money.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "this command rewrites an existing test file from the shell",
+            "test/money.test.js"
+          ],
+          "excludes": [
+            "weaker"
+          ]
+        }
+      }
+    ],
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    }
+  },
+  {
+    "name": "reading a test file or redirecting test output is fine",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "sed -n 1,40p test/invoice.test.js && npm test > test-output.log 2>&1"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "PowerShell Remove-Item with a Windows path asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "cwd": "C:\\work\\shop",
+          "tool_name": "PowerShell",
+          "tool_input": {
+            "command": "Remove-Item .\\test\\money.test.js -Force"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      }
+    ]
+  },
+  {
+    "name": "Windows path Edit of a test file is guarded",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "cwd": "C:\\work\\shop",
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "C:\\work\\shop\\test\\money.test.js",
+            "old_string": "  assert.equal(a, 1);\n  assert.equal(b, 2);",
+            "new_string": "  assert.equal(a, 1);"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "test/money.test.js"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "testGuard: deny blocks instead of asking",
+    "config": {
+      "testGuard": "deny"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/a.test.js",
+            "old_string": "test('a', () => {",
+            "new_string": "test.skip('a', () => {"
+          }
+        },
+        "expect": {
+          "permissionDecision": "deny",
+          "includes": [
+            "It was blocked"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom testGlobs replace the defaults",
+    "config": {
+      "testGlobs": [
+        "checks/**"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/checks/invoice.js",
+            "old_string": "assert(a);\nassert(b);",
+            "new_string": "assert(a);"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask"
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/a.test.js",
+            "old_string": "assert(a);\nassert(b);",
+            "new_string": "assert(a);"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "MultiEdit: one weakening edit among several asks",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "MultiEdit",
+          "tool_input": {
+            "file_path": "$CWD/test/a.test.js",
+            "edits": [
+              {
+                "old_string": "const x = 1;",
+                "new_string": "const x = 2;"
+              },
+              {
+                "old_string": "test('b', () => {",
+                "new_string": "test.todo('b', () => {"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "test.todo"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex apply_patch removing an assertion is denied",
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: test/invoice.test.js\n@@\n   assert.equal(inv.total, 10800);\n-  assert.equal(inv.tax, 800);\n });\n*** End Patch"
+          }
+        },
+        "expect": {
+          "permissionDecision": "deny",
+          "includes": [
+            "removes 1 assertion(s)"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex apply_patch deleting a test file is denied",
+    "files": {
+      "test/old.test.js": "test('a', () => { expect(1).toBe(2); });\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Delete File: test/old.test.js\n*** End Patch"
+          }
+        },
+        "expect": {
+          "permissionDecision": "deny",
+          "includes": [
+            "deletes the test file"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "disable: [\"guard-tests\"] turns it off",
+    "config": {
+      "disable": [
+        "guard-tests"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "rm test/invoice.test.js"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a heredoc that creates a NEW test file is allowed (seen live)",
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cat > test/fees.test.js <<'EOF'\nimport { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { lateFee } from '../src/invoice.js';\n\ntest('late fee after 30 days', () => {\n  assert.equal(lateFee(10000, 31) > 0, true);\n});\nEOF"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a heredoc onto an existing test file after cd asks (path resolved from the cd)",
+    "files": {
+      "demo/test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cd demo && cat > test/money.test.js <<'EOF'\nimport { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { lateFee } from '../src/invoice.js';\n\ntest('late fee after 30 days', () => {\n  assert.equal(lateFee(10000, 31) > 0, true);\n});\nEOF"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "rewrites an existing test file",
+            "demo/test/money.test.js"
+          ]
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cd demo && cat > test/fees.test.js <<'EOF'\nimport { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { lateFee } from '../src/invoice.js';\n\ntest('late fee after 30 days', () => {\n  assert.equal(lateFee(10000, 31) > 0, true);\n});\nEOF"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "tee into a new test file is allowed; tee -a onto an existing one asks",
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "printf \"test('x', () => {});\\n\" | tee test/fees.test.js"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo \"test('y', () => {});\" | tee -a test/money.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "rewrites an existing test file",
+            "test/money.test.js"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "PowerShell Set-Content: a new test file is allowed, an existing one asks",
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "PowerShell",
+          "tool_input": {
+            "command": "Set-Content -Path test\\fees.test.js -Value $code"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "PowerShell",
+          "tool_input": {
+            "command": "@'\nimport { test } from 'node:test';\ntest('x', () => {});\n'@ | Set-Content .\\test\\money.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "rewrites an existing test file",
+            "test/money.test.js"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "cp of a new test file into the tests folder is allowed; over an existing one it asks",
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n",
+      "tmp/fees.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n",
+      "tmp/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cp tmp/fees.test.js test/"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cp tmp/money.test.js test/"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "test/money.test.js"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex: rewriting an existing test from the shell is denied with the Edit-tool hint",
+    "files": {
+      "test/money.test.js": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\ntest('to cents', () => {\n  assert.equal(1 + 1, 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo '' > test/money.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "deny",
+          "includes": [
+            "It was blocked",
+            "use the Edit tool"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "codeGlobs set: a test file outside them is still guarded",
+    "config": {
+      "codeGlobs": [
+        "src/**/*.js"
+      ]
+    },
+    "files": {
+      "test/a.test.js": "import assert from 'node:assert';\ntest('total', () => {\n  assert.equal(total(1), 1);\n  assert.equal(total(2), 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/test/a.test.js",
+            "old_string": "  assert.equal(total(2), 2);\n",
+            "new_string": ""
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "removes 1 assertion(s) (2 -> 1)"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "git rm --cached only untracks a test file: allowed",
+    "files": {
+      "test/a.test.js": "import assert from 'node:assert';\ntest('total', () => {\n  assert.equal(total(1), 1);\n  assert.equal(total(2), 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git rm --cached test/a.test.js"
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a command that only mentions a test file inside quotes is fine",
+    "files": {
+      "test/a.test.js": "import assert from 'node:assert';\ntest('total', () => {\n  assert.equal(total(1), 1);\n  assert.equal(total(2), 2);\n});\n"
+    },
+    "steps": [
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo \"cleanup; rm test/a.test.js\""
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo \"results > test/a.test.js\""
+          }
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "guard-tests",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo \"a\" > test/a.test.js"
+          }
+        },
+        "expect": {
+          "permissionDecision": "ask",
+          "includes": [
+            "rewrites an existing test file"
+          ]
+        }
+      }
+    ]
+  }
+]

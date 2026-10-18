@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1: Done means proven · Prove It</title>
+<meta name="description" content="Done means proven. The agent can't finish after editing code until a check has passed, and its reply has to end with a Proof block. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/01-done-means-proven.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/01-done-means-proven.html">
+<meta property="og:title" content="Lesson 1: Done means proven · Prove It">
+<meta property="og:description" content="Done means proven. The agent can't finish after editing code until a check has passed, and its reply has to end with a Proof block. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 1: Done means proven · Prove It">
+<meta name="twitter:description" content="Done means proven. The agent can't finish after editing code until a check has passed, and its reply has to end with a Proof block. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html" aria-current="page"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><span>Demo</span><a class="task" href="https://github.com/georgehanu/prove-it/blob/main/tasks/01-late-fee.md">01-late-fee.md</a><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/stop-needs-proof.mjs">View the code &rarr;</a></div><h1>Lesson 1 · Done means proven</h1>
+<p>You ask for a change. The agent edits three files and says &quot;Done! The late fee is implemented and handles all edge cases.&quot; It reads well. Then you run the tests, or you open the page, and it&#39;s almost right: the fee is off for invoices that are one day late, and the README line you asked for isn&#39;t there.</p>
+<p>That gap is the most common complaint about AI coding tools. In the <a href="https://survey.stackoverflow.co/2025/ai">Stack Overflow 2025 Developer Survey</a>, 66% of developers cited &quot;AI solutions that are almost right, but not quite&quot; as a frustration, more than any other. And the habit that would catch it is rare: in <a href="https://www.sonarsource.com/blog/state-of-code-developer-survey-report-the-current-reality-of-ai-coding/">Sonar&#39;s 2026 State of Code survey</a>, 96% of developers said they don&#39;t fully trust AI-generated code, yet only 48% said they always verify it before committing.</p>
+<p>So most of us know we should check, and about half of us do it every time. This lesson makes the agent do the first round of checking for you, every time, and show its work.</p>
+<h2>The idea: &quot;done&quot; is a claim that needs evidence</h2>
+<p>When a colleague says &quot;it&#39;s done&quot;, you trust it because you know what they did to get there. With an agent, you see a confident summary and a diff. The summary is generated text. It can say &quot;all tests pass&quot; whether or not a test ran.</p>
+<p>So we change the definition of done. Done means:</p>
+<ol>
+<li>the checks ran <strong>after the last edit</strong>, and passed, and</li>
+<li>every part of the request points to evidence, or says plainly that it isn&#39;t done or wasn&#39;t checked.</li>
+</ol>
+<p>Two pieces of Prove It work together on this. A <strong>hook</strong> enforces what code can check: the agent cannot finish after editing code until a check has passed since its last edit, and its reply ends with a Proof block. A <strong>skill</strong> shapes what goes in that block: one line of evidence per requirement, so the reader can verify it.</p>
+<h2>The Stop hook</h2>
+<p>Claude Code runs a <code>Stop</code> hook whenever the agent is about to finish its turn. The hook can block that and send the agent back with a reason. Prove It&#39;s <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/stop-needs-proof.mjs"><code>stop-needs-proof.mjs</code></a> uses a small event log that another hook, <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/track.mjs"><code>track.mjs</code></a>, keeps for each session:</p>
+<ul>
+<li>every edit to a code file (docs, JSON config, lockfiles and anything in <code>node_modules</code> or <code>dist</code> are ignored), and</li>
+<li>every check command with its result: <code>npm test</code>, <code>pnpm lint</code>, <code>npx tsc</code>, <code>pytest</code>, <code>go test</code>, <code>cargo test</code> and friends, plus any test-like script in your <code>package.json</code>.</li>
+</ul>
+<p>When the agent tries to stop, the hook looks at what happened since the last time it was allowed to stop:</p>
+<ul>
+<li><strong>No code edits since it was last allowed to stop?</strong> Fine, stop. A turn that only answers a question needs no proof.</li>
+<li><strong>Edits, then a passing check, and the reply ends with a Proof block?</strong> Fine, stop.</li>
+<li><strong>Edits and no check since the last one?</strong> Blocked, with the files and the checks it found:</li>
+</ul>
+<pre><code class="hljs language-text">Prove It: you changed src/fees.js and no check has run since the last edit.
+Run the project&#x27;s checks (found: npm test) and show the result, then end with
+a &quot;## Proof&quot; block. If you cannot run checks, say exactly what you did not
+verify under &quot;Not verified:&quot;.
+</code></pre><ul>
+<li><strong>The last check failed?</strong> Blocked: <code>Prove It: the last check failed: npm test (Exit code 1)</code>. The reason asks it to fix the cause, run the check again and end with a Proof block.</li>
+<li><strong>The checks passed, but the reply has no Proof block?</strong> Blocked once, with a pointer to the format:</li>
+</ul>
+<pre><code class="hljs language-text">Prove It: the checks passed (`npm test`), but your reply has no Proof block.
+End it with a &quot;## Proof&quot; section (plain markdown, not inside a code block) in
+the prove-it skill&#x27;s format: one line per requirement -&gt; its evidence (command,
+exit code, the output line that proves it), a &quot;Checks:&quot; line, and a
+&quot;Not verified:&quot; line for anything you did not check.
+</code></pre><p>The hook counts a Proof block when the reply has a markdown heading whose text is &quot;Proof&quot; (<code>## Proof</code>, <code>### proof:</code>, any level, any case), or <code>**Proof**</code> alone on its line, outside code blocks. &quot;Here is proof that it works&quot; doesn&#39;t count, and neither does a <code>## Proof</code> the agent quotes inside a code block. If you don&#39;t want this rule, set <code>&quot;requireProof&quot;: false</code> in <code>.prove-it.json</code>; the check rules stay on.</p>
+<p>Two rules keep it from becoming a nuisance. Each reason blocks at most once per stop: the agent can be sent back to run the checks and then once more for the Proof block, but never twice for the same thing, so it can never loop. And there&#39;s an honest way out: a real <code>Not verified:</code> section in the last message. Sometimes the agent genuinely can&#39;t run the checks, because the database isn&#39;t there or you told it not to. Then it should say what is unverified, and the hook accepts that instead of a passing check. <code>Not verified: none</code> doesn&#39;t count. Once the checks have passed, there&#39;s nothing to escape from: the <code>Not verified:</code> line goes inside the Proof block.</p>
+<p>A detail that matters more than it looks: <code>npm test | tail -20</code> reports the exit code of <code>tail</code>, not of the tests, and agents pipe output like that all the time. So when a command has a pipe, <code>;</code> or <code>||</code>, <code>track</code> also reads the output for the usual failure lines (<code>not ok</code>, <code># fail 1</code>, <code>2 failed</code>, <code>FAIL</code>) before it counts the run as passing.</p>
+<h2>The prove-it skill</h2>
+<p>The hook makes sure something ran and that the reply has a Proof block. The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/prove-it/SKILL.md"><code>prove-it</code> skill</a> makes that block useful. Claude loads a skill when it judges it relevant, so it may not load on its own; the hook&#39;s message names it, and you can always ask for it with <code>/prove-it:prove-it</code>. It asks the agent to:</p>
+<ol>
+<li>list each requirement from your request, including the small ones;</li>
+<li>find and run the project&#39;s checks after its last edit;</li>
+<li>map each requirement to evidence: the command, the exit code, and the line of output that proves it;</li>
+<li>put everything it didn&#39;t do or couldn&#39;t check under &quot;Not verified:&quot;, with the reason.</li>
+</ol>
+<p>The output is a fixed block at the end of the reply:</p>
+<pre><code class="hljs language-text">## Proof
+- Late fee is 2% per started month -&gt; `node --test test/fees.test.js` exit 0: &quot;ok 2 - one day late is one month&quot;
+- Capped at 10% -&gt; `node --test test/fees.test.js` exit 0: &quot;ok 4 - caps at 10%&quot;
+- README line -&gt; not done, because I could not find where fees are documented
+- Checks: `npm test` exit 0 (23 passed, 0 failed)
+- Not verified: invoices with a discount (no test for that combination)
+</code></pre><p>The point isn&#39;t the formatting. It&#39;s that every line can be checked by you in seconds, and the gaps are written down instead of hidden behind &quot;should work&quot;.</p>
+<h2>Before and after</h2>
+<p><em>An illustrative exchange, shortened.</em> Same request, a quick edit to the pagination helper. Without Prove It:</p>
+<pre><code class="hljs language-text">you    Make paginate() also return from and to (e.g. &quot;showing 11-20&quot;). Keep it quick.
+agent  [edits src/paginate.js]
+agent  Done! paginate() now returns `from` and `to` alongside the page items.
+</code></pre><p>With Prove It:</p>
+<pre><code class="hljs language-text">agent  [edits src/paginate.js]
+agent  Done! paginate() now returns `from` and `to`.
+hook   Prove It: you changed src/paginate.js and no check has run since the last edit. ...
+agent  [runs npm test]  # tests 17  # pass 17  # fail 0
+agent  ## Proof
+       - paginate() returns from/to -&gt; edited src/paginate.js; existing tests still pass
+       - Checks: `npm test` exit 0 (17 passed, 0 failed)
+       Not verified:
+       - the from/to values themselves: no test asserts them yet
+</code></pre><p>The second reply is less satisfying to read and much more useful. It tells you the suite is green and that the new fields have no test, which is exactly what you need to know before you merge.</p>
+<h2>Try it</h2>
+<ol>
+<li>Copy only the <code>demo/</code> folder to a temp folder and make it a git repo (the commands are in <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>).</li>
+<li>Open Claude Code there <strong>without</strong> the plugin and paste the request from <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/01-late-fee.md">task 1, the late fee</a>. Paste only the request: the task file stays outside the copy because it also lists what a proven answer shows, and an agent that reads the checklist first makes the comparison meaningless.</li>
+<li>Make a fresh copy, start Claude Code with the plugin (<code>claude --plugin-dir path/to/prove-it/plugin</code>, or install it), and paste the same request.</li>
+<li>Compare the endings. Press Ctrl+O to see the hook&#39;s messages.</li>
+</ol>
+<p>What to expect. Without the pack, the agent may or may not run the tests, and it usually ends with a summary: you work out for yourself whether each part of the request, the README line included, got done. With the pack, the hooks guarantee two things the model can&#39;t skip quietly: it can&#39;t finish until a check has passed after its last edit, and if its reply has no Proof block it&#39;s sent back for one that maps each requirement, the README line included, to evidence. The hook asks for that mapping; whether every line holds up is what you read, and the block puts the gaps on the page instead of hiding them in a summary.</p>
+<h2>Limits</h2>
+<p>Be clear about what a hook can and can&#39;t know.</p>
+<ul>
+<li><strong>It knows a check ran, not that the check covers the change.</strong> A green suite with no test for the late fee still passes the hook. That&#39;s why the skill asks for evidence per requirement, and why lesson 2 is about tests that can fail.</li>
+<li><strong>It knows a Proof block is there, not that it&#39;s true.</strong> The hook checks for the heading. Whether each line quotes real output and every requirement has a line is for you to read; the block makes that a quick read.</li>
+<li><strong>It only sees edits made through the edit tools.</strong> A file changed with <code>sed -i</code> in the shell isn&#39;t recorded as a code edit.</li>
+<li><strong>It recognises common check commands, where they run.</strong> <code>npm test</code> counts when it is the command being run (also after <code>cd x &amp;&amp;</code>, <code>CI=1</code> or <code>npx</code>); <code>echo npm test</code>, <code>grep &quot;npm test&quot;</code> or a commit message saying the tests pass don&#39;t. If yours is <code>just ci</code> or <code>./scripts/ci.sh</code>, add it to <code>checks</code> in <code>.prove-it.json</code> (lesson 7).</li>
+<li><strong>The escape hatch is text.</strong> An agent could write &quot;Not verified: the tests&quot; to get out. It then has to admit it in writing, in front of you, which is the point.</li>
+<li><strong>A side question can be blocked once.</strong> If code was edited and no check has run since (you interrupted that turn, say), the next stop is blocked once even when the agent only answered a question, because the hook looks at everything since the last allowed stop and that edit still has no check behind it.</li>
+<li><strong>One block per stop.</strong> If the agent ignores the reason and stops again, it&#39;s allowed through. The hook makes skipping visible; it doesn&#39;t make it impossible.</li>
+</ul>
+<p>Next: a green suite only means something if the tests can fail. <a href="02-tests-that-can-fail.html">Lesson 2: tests that can fail</a>.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><span></span><a class="next" href="02-tests-that-can-fail.html"><small>Lesson 2 &rarr;</small>Tests that can fail</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>

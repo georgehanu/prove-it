@@ -1,0 +1,13 @@
+{
+  "name": "prove-it",
+  "version": "1.0.0",
+  "description": "Your coding agent says it's done. Make it prove it. Hooks stop it finishing without running checks, put test-weakening edits to you, and flag shortcuts and oversized diffs; skills for proof, honest tests, root causes and review briefs.",
+  "author": {
+    "name": "George Hanu",
+    "url": "https://x.com/georgehanu"
+  },
+  "homepage": "https://georgehanu.github.io/prove-it/",
+  "repository": "https://github.com/georgehanu/prove-it",
+  "license": "MIT",
+  "keywords": ["verification", "testing", "code-review", "hooks", "skills", "debugging"]
+}

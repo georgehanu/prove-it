@@ -1,0 +1,3247 @@
+[
+  {
+    "name": "no edits: the agent may stop",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Here is the answer."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "code edited, no check ran: blocks and names the file and the check",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test",
+          "lint": "eslint ."
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/invoice.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done!"
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/invoice.js",
+            "npm test",
+            "npm run lint",
+            "Not verified:"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "code edited, then a passing check: allowed",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/invoice.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# pass 12\n# fail 0",
+            "stderr": "",
+            "interrupted": false
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Added the late fee.\n\n## Proof\n- late fee -> `npm test` exit 0: \"# pass 12\""
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "failing check arrives as PostToolUseFailure: blocks with the command",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/invoice.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "hook_event_name": "PostToolUseFailure",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "error": "Exit code 1",
+          "is_interrupt": false
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed",
+            "`npm test`",
+            "Exit code 1",
+            "## Proof"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a check before the last edit does not count",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/b.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/a.js",
+            "src/b.js",
+            "no check has run since the last edit"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "failed then fixed and passing: allowed",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "content": "export const a = 1;\n"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "hook_event_name": "PostToolUseFailure",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "error": "Exit code 1"
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Fixed.\n\n## Proof\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "stop_hook_active: never blocks twice in a row, and the next turn starts clean",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block"
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Still done."
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Answering a question, no edits."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "escape hatch: a real 'Not verified:' section allows the stop",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "## Proof\n- Requirement: rename -> not run\n- Not verified: the tests, because node is not installed in this sandbox."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "escape hatch as a heading with a bullet list",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Changed it.\n\n### Not verified\n\n- the PDF export, no fixture for it"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "'Not verified: none' is not an escape hatch",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "All good.\nNot verified: none."
+        },
+        "expect": {
+          "decision": "block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "only docs, config and lockfiles edited: allowed",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/README.md",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/package-lock.json",
+            "content": "{}"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/tsconfig.json",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Docs updated."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "edits inside node_modules and dist are ignored",
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/node_modules/x/index.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/dist/app.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Patched."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Windows paths: drive letter case and backslashes",
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "cwd": "C:\\Users\\dev\\shop",
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "c:\\Users\\dev\\shop\\src\\cart\\Total.ts",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "cwd": "C:\\Users\\dev\\shop",
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/cart/Total.ts"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a pipe hides the exit code: failure found in the output",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test 2>&1 | tail -n 20"
+          },
+          "tool_response": {
+            "stdout": "# tests 9\n# pass 8\n# fail 1",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed",
+            "a pipe hid the exit code"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "'&& echo OK || echo FAIL' always exits 0: the output decides",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test && echo \"EXIT 0\" || echo \"EXIT NONZERO\""
+          },
+          "tool_response": {
+            "stdout": "# tests 17\n# pass 16\n# fail 1\nEXIT NONZERO",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "head cut off the summary, but a TAP \"not ok\" line shows the failure (seen live)",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test 2>&1 | head -60"
+          },
+          "tool_response": {
+            "stdout": "TAP version 13\nok 1 - toCents reads strings\nnot ok 2 - invoice totals: tax on the discounted subtotal\n  ---",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a pipe with a clean run counts as passing",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "vitest run"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.ts",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npx vitest run 2>&1 | tail -5"
+          },
+          "tool_response": {
+            "stdout": " Test Files  3 passed (3)\n      Tests  21 passed (21)",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: `npx vitest run` (21 passed)"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a check started in the background proves nothing yet",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test",
+            "run_in_background": true
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block"
+        }
+      }
+    ]
+  },
+  {
+    "name": "an interrupted check counts as failed",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": "",
+            "interrupted": true
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "interrupted"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "commands that are not checks do not count",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cat eslint.config.js && ls test"
+          },
+          "tool_response": {
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block"
+        }
+      }
+    ]
+  },
+  {
+    "name": ".prove-it.json checks replace the built-in list",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": {
+      "checks": [
+        "^make verify\\b"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "a command matching /^make verify\\b/"
+          ]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "b",
+            "new_string": "c"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "make verify"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: `make verify` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "disable: [\"stop-needs-proof\"] turns the Stop hook off",
+    "config": {
+      "disable": [
+        "stop-needs-proof"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "disable: [\"all\"] turns every hook off",
+    "config": {
+      "disable": [
+        "all"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "no check command in the project: says so",
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/main.go",
+            "content": "package main\n"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "I found no check command"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Python project: suggests pytest, and python -m pytest counts",
+    "files": {
+      "pyproject.toml": "[project]\nname = \"x\"\n"
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/app/billing.py",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "pytest"
+          ]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/app/billing.py",
+            "old_string": "b",
+            "new_string": "c"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "python -m pytest -q"
+          },
+          "tool_response": {
+            "stdout": "5 passed in 0.12s",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: `python -m pytest -q` exit 0: \"5 passed\""
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "PowerShell tool counts as a shell (Windows)",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "PowerShell",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\r\n\r\n## Proof\r\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex: apply_patch edit and a failing shell exit code",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: src/dates.js\n@@\n-const a = 1;\n+const a = 2;\n*** End Patch"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "exit_code": 1,
+            "output": "# fail 2"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed",
+            "Exit code 1"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex: shell output arrives as plain text; a failing run is read from the output",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: C:/work/shop/src/money.js\n@@\n+export const half = (c) => Math.round(c / 2);\n*** End Patch"
+          },
+          "tool_response": "Exit code: 0\nOutput:\nSuccess."
+        }
+      },
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": "\n> tiny-invoice@1.0.0 test\n> node --test\n\nTAP version 13\nnot ok 3 - percentOf rounds halves up\n# tests 17\n# pass 16\n# fail 1\n"
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "last check failed",
+            "the output reports failures"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex: a passing plain-text run allows the stop (seen live)",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: src/money.js\n@@\n+export const half = (c) => Math.round(c / 2);\n*** End Patch"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Added half. No commands or tests ran."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/money.js"
+          ]
+        }
+      },
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": "TAP version 13\nok 1 - x\n# tests 17\n# pass 17\n# fail 0\n"
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "## Proof\nnpm test passed"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "fail open: unreadable input exits 0 silently and logs the error",
+    "expectErrorLog": true,
+    "steps": [
+      {
+        "hook": "stop-needs-proof",
+        "raw": "{not json",
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a broken .prove-it.json falls back to the defaults",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": "{ this is not json",
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "npm test"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "pnpm project: suggestions use pnpm",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "vitest run",
+          "typecheck": "tsc --noEmit"
+        }
+      },
+      "pnpm-lock.yaml": "lockfileVersion: 9\n"
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.ts",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "pnpm test",
+            "pnpm run typecheck"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "checks passed but the reply has no Proof block: blocks once and asks for it",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done! Added the late fee and the tests pass."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "checks passed (`npm test`)",
+            "no Proof block",
+            "## Proof",
+            "prove-it skill",
+            "one line per requirement",
+            "Checks:",
+            "Not verified:"
+          ]
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Done! Added the late fee and the tests pass."
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Anything else?"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "Proof heading at any level and in any case counts",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n### proof:\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n# PROOF\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "bold **Proof** on its own line counts",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n**Proof**\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a sentence that mentions proof is not a Proof block",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Here is proof that it works: **Proof** is in the tests.\n## Proof of concept\nAll green."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no Proof block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "after passing checks, 'Not verified:' without a Proof block still asks for the block",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Added it.\nNot verified: the PDF export, no fixture for it."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no Proof block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "requireProof: false turns off only the Proof block rule",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": {
+      "requireProof": false
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# tests 12\n# pass 12\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no check has run since the last edit"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "Codex: passing check but no Proof block blocks; stop_hook_active then allows",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "apply_patch",
+          "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: src/money.js\n@@\n+export const half = (c) => Math.round(c / 2);\n*** End Patch"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": "TAP version 13\nok 1 - x\n# tests 17\n# pass 17\n# fail 0\n"
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Added half(). Tests pass."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no Proof block",
+            "## Proof"
+          ]
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "args": [
+          "--codex"
+        ],
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Added half(). Tests pass."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "after a no-check block, the agent runs the tests and is sent back once more for the Proof block",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done!"
+        },
+        "expect": {
+          "decision": "block",
+          "includes": ["no check has run"]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# pass 12\n# fail 0",
+            "stderr": "",
+            "interrupted": false
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Tests pass, all done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": ["no Proof block"]
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Still no block here."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "after a no-check block, a reply with the Proof block is allowed",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done!"
+        },
+        "expect": {
+          "decision": "block"
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# pass 12\n# fail 0",
+            "stderr": "",
+            "interrupted": false
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Done.\n\n## Proof\n- a -> `npm test` exit 0: \"# pass 12\"\n- Checks: `npm test` exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "failed check, then fixed: blocked for the failure, then for the missing Proof block, never a third time",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "hook_event_name": "PostToolUseFailure",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "error": "Exit code 1",
+          "is_interrupt": false
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": ["last check failed"]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# pass 12\n# fail 0",
+            "stderr": "",
+            "interrupted": false
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Fixed it."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": ["no Proof block"]
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Fixed it, really."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "stop_hook_active from another hook, with no block of ours, is left alone",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": true,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a check only counts in command position: echoed, grepped, quoted, --help and listing runs do not",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "echo npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "grep -n \"npm test\" README.md"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git commit -m \"npm test passes\""
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test --help"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npx jest --listTests"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cat .rspec"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "ls src/tsc"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no check has run since the last edit"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "checks in command position count (runners, cd, env vars, wrappers), one per stop",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "0",
+            "new_string": "1"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "1",
+            "new_string": "2"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm run test:unit"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "2",
+            "new_string": "3"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cd pkg && npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "3",
+            "new_string": "4"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "CI=1 npx vitest run"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "4",
+            "new_string": "5"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "pnpm -r test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "5",
+            "new_string": "6"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "python -m pytest -q"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "6",
+            "new_string": "7"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "go test ./..."
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "7",
+            "new_string": "8"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cargo test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "8",
+            "new_string": "9"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "./gradlew test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "9",
+            "new_string": "10"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "mvn -q test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "10",
+            "new_string": "11"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "dotnet test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "11",
+            "new_string": "12"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "bundle exec rspec"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "12",
+            "new_string": "13"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "vendor/bin/phpunit"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "PowerShell: npm test; \"exit=$LASTEXITCODE\" counts, the quoted part is text",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "PowerShell",
+          "tool_input": {
+            "command": "npm test; \"exit=$LASTEXITCODE\""
+          },
+          "tool_response": {
+            "stdout": "# pass 3\n# fail 0\nexit=0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a commit message that says the tests pass is not a check, then the real run is",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git commit -am \"fix: npm test passes now\""
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no check has run"
+          ]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "b",
+            "new_string": "c"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git add -A && git commit -m \"wip\" && npm test"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": ".prove-it.json checks are matched against the stripped command, and each part of it",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": {
+      "checks": [
+        "^make verify\\b"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "git commit -m \"make verify is green\""
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "a command matching /^make verify\\b/"
+          ]
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "b",
+            "new_string": "c"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "cd api && make verify"
+          },
+          "tool_response": {
+            "stdout": "ok",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n## Proof\n- Checks: exit 0"
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "a ## Proof heading inside a code block is not a Proof block",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "npm test"
+          },
+          "tool_response": {
+            "stdout": "# pass 3\n# fail 0",
+            "stderr": ""
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done. The format is:\n\n```\n## Proof\n- <requirement> -> <evidence>\n```"
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no Proof block"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a Not verified section inside a code block is not the escape hatch",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.\n\n~~~text\nNot verified: the payment flow\n~~~"
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no check has run"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "no session_id: sessions are told apart by their transcript path, not one shared log",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          },
+          "transcript_path": "/tmp/sessions/a.jsonl"
+        },
+        "noSession": true
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.",
+          "transcript_path": "/tmp/sessions/b.jsonl"
+        },
+        "expect": {
+          "silent": true
+        },
+        "noSession": true
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done.",
+          "transcript_path": "/tmp/sessions/a.jsonl"
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/a.js"
+          ]
+        },
+        "noSession": true
+      }
+    ]
+  },
+  {
+    "name": "custom ignoreGlobs: edits there are not code edits",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": {
+      "ignoreGlobs": [
+        "**/node_modules/**",
+        "**/generated/**"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/generated/client.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/a.js"
+          ],
+          "excludes": [
+            "generated"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "codeGlobs: only matching edits need proof",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "config": {
+      "codeGlobs": [
+        "src/**/*.js"
+      ]
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/scripts/release.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "silent": true
+        }
+      },
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "Done."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "src/a.js"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "an edit left unchecked (the turn was interrupted): the next answer, even to a side question, is blocked once",
+    "files": {
+      "package.json": {
+        "scripts": {
+          "test": "node --test"
+        }
+      }
+    },
+    "steps": [
+      {
+        "hook": "track",
+        "input": {
+          "tool_name": "Edit",
+          "tool_input": {
+            "file_path": "$CWD/src/a.js",
+            "old_string": "a",
+            "new_string": "b"
+          }
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "It's in src/a.js, line 3."
+        },
+        "expect": {
+          "decision": "block",
+          "includes": [
+            "no check has run"
+          ]
+        }
+      },
+      {
+        "hook": "stop-needs-proof",
+        "input": {
+          "stop_hook_active": false,
+          "last_assistant_message": "It's in src/a.js, line 3."
+        },
+        "expect": {
+          "silent": true
+        }
+      }
+    ]
+  }
+]

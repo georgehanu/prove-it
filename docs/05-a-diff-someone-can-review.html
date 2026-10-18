@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5: A diff someone can review · Prove It</title>
+<meta name="description" content="A diff someone can review. A diff budget, a brief that says what to read first, and a reviewer with fresh eyes. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/05-a-diff-someone-can-review.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/05-a-diff-someone-can-review.html">
+<meta property="og:title" content="Lesson 5: A diff someone can review · Prove It">
+<meta property="og:description" content="A diff someone can review. A diff budget, a brief that says what to read first, and a reviewer with fresh eyes. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 5: A diff someone can review · Prove It">
+<meta name="twitter:description" content="A diff someone can review. A diff budget, a brief that says what to read first, and a reviewer with fresh eyes. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html" aria-current="page"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><span>Demo</span><a class="task" href="https://github.com/georgehanu/prove-it/blob/main/tasks/05-month-end-terms.md">05-month-end-terms.md</a><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/review-brief/SKILL.md">View the code &rarr;</a></div><h1>Lesson 5 · A diff someone can review</h1>
+<p>The agent finished. The checks passed. Now a person has to read the change, and that&#39;s where the time goes. Agents write fast and they write a lot: a three-line fix arrives with a reformatted file, two renamed helpers and a new utility nobody asked for.</p>
+<p>The numbers say this is the new bottleneck. <a href="https://faros.ai/research/ai-acceleration-whiplash">Faros AI&#39;s 2026 &quot;Acceleration Whiplash&quot; report</a>, built on telemetry from about 22,000 developers, compares low and high AI adoption within the same organisations. Its headline figures: pull requests 51% bigger, median review time five times longer, and 28% more bugs per PR. Bigger diffs, read more slowly, with more in them to miss.</p>
+<p>You can&#39;t make review free. You can make it start in the right place. This lesson has three pieces: a budget that notices when a diff is getting too big, a brief that tells the reviewer where to look, and a second reviewer with fresh eyes.</p>
+<h2>diff-budget: notice early</h2>
+<p>The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/diff-budget.mjs"><code>diff-budget</code> hook</a> runs after each edit. In a git repository it adds up changed lines against <code>HEAD</code> with <code>git diff --numstat</code>, plus the lines of new untracked files (up to 200 files and 2 MB, never inside <code>node_modules</code>, <code>dist</code>, <code>build</code> and the like; the note says when it left some out). When the total passes the budget (400 lines by default), it tells the agent once:</p>
+<pre><code class="hljs language-text">Prove It: the working tree now has 412 changed lines against HEAD (budget 400).
+A diff this size is hard to review in one pass. Before going further, check: can
+this be split into smaller changes? Are there unrelated edits to undo? If it has
+to be this big, say why in your summary and hand over a review brief.
+</code></pre><p>It speaks again only at the next multiple (800, 1200...), and again after the diff has shrunk and grown back. It doesn&#39;t nag on every edit. Set your own number with <code>diffBudget</code> in <code>.prove-it.json</code>.</p>
+<p>Why tell the agent and not you? Because the agent is the one who can still change direction cheaply. At 400 lines it can stop reformatting, undo the drive-by rename, or propose splitting the work. At the end, all it can do is apologise.</p>
+<h2>review-brief: where to look first</h2>
+<p>The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/review-brief/SKILL.md"><code>review-brief</code> skill</a> turns the diff into a one-screen brief for a human:</p>
+<pre><code class="hljs language-text">## Review brief
+Intent: invoices can use &quot;net-1-month&quot; terms, due the same day next month or that month&#x27;s last day.
+Size: 46 changed lines in 2 files (budget 400)
+
+Files by risk
+- high  src/dates.js - date arithmetic used for every due date
+- low   test/dates.test.js - new tests only
+
+Read first
+1. src/dates.js:31 - clamping to the last day: check February and leap years
+2. src/dates.js:27 - month arithmetic: check December rolls into the next year
+
+Tested
+- month-end clamping -&gt; `npm test` exit 0 (&quot;ok 7 - 31 Jan is due 28 Feb&quot;)
+- time zone -&gt; `TZ=America/Los_Angeles npm test` exit 0
+
+Not tested
+- terms on invoices created before this change (no migration in scope)
+
+Unrelated changes
+- none
+
+Independent review (fresh-eyes)
+- [medium] src/dates.js:29 - daysInMonth called with a 0-based month - the call passes month + 1, checked: fine
+- Dropped 1 finding without evidence.
+</code></pre><p>Each section answers a question a reviewer has. <em>What is this for?</em> Intent. <em>Where can it hurt?</em> Files by risk. <em>Where do I start?</em> Read first, with <code>file:line</code>. <em>What can I stop worrying about?</em> Tested, with commands. <em>What do I still have to think about?</em> Not tested. <em>Is anything sneaking in?</em> Unrelated changes.</p>
+<p>The &quot;Read first&quot; list is the heart of it. A reviewer who reads those three lines carefully and skims the rest does a better review than one who reads 400 lines at the same speed.</p>
+<h2>fresh-eyes: a second reader without the author&#39;s story</h2>
+<p>The agent that wrote the code is the worst one to review it. It knows what it meant to do, and it reads its diff through that. The skill&#39;s last step hands the change to the <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/agents/fresh-eyes.md"><code>fresh-eyes</code> subagent</a>, which starts with an empty context and gets only the user&#39;s original request, word for word.</p>
+<p>fresh-eyes is deliberately narrow:</p>
+<ul>
+<li><strong>Read-only.</strong> It has Read, Grep, Glob and Bash, and its instructions limit Bash to <code>git diff</code>, <code>git status</code>, <code>git log</code>, <code>git show</code> and <code>git ls-files</code>.</li>
+<li><strong>The diff is the scope.</strong> It opens other files only to understand a changed line.</li>
+<li><strong>Evidence or nothing.</strong> Every finding needs <code>file:line</code>, a reason and a confidence. Before claiming, say, that a secret was committed, it has to check <code>git ls-files</code> and <code>.gitignore</code>.</li>
+<li><strong>Request coverage first.</strong> It goes through the request sentence by sentence: done, missing, or partly done.</li>
+</ul>
+<p>And the brief filters its findings again. A finding without a line and a reason is dropped, and the brief says how many were dropped. That rule exists because automated reviewers are confidently wrong often enough to cost you time. A false &quot;critical&quot; finding sends you hunting for a problem that isn&#39;t there. A reviewer&#39;s claims need receipts too.</p>
+<h2>Try it</h2>
+<ol>
+<li>Make a fresh copy of the demo <strong>and commit it</strong> (see <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>). The budget and the brief both read <code>git diff</code>.</li>
+<li>To see the budget fire on a small task, add a <code>.prove-it.json</code> with <code>{ &quot;diffBudget&quot;: 30 }</code>.</li>
+<li>Start Claude Code with the plugin and paste the request from <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/05-month-end-terms.md">task 5</a>. It ends with &quot;write a review brief for me&quot;, which loads the skill. You can also run <code>/prove-it:review-brief</code> yourself.</li>
+<li>Read only the &quot;Read first&quot; lines, then decide whether you&#39;d merge. Then read the whole diff and see whether you&#39;d have decided differently.</li>
+</ol>
+<h2>Limits</h2>
+<ul>
+<li><strong>The budget counts lines, not risk.</strong> A 20-line change to how money is rounded can matter more than 600 lines of tests. Lines are a cheap signal that a change is getting hard to review, nothing more.</li>
+<li><strong>Generated files and lockfiles count</strong> if they&#39;re tracked. Exclude them from git diff with a <code>.gitattributes</code> entry like <code>package-lock.json -diff</code>, or raise the budget.</li>
+<li><strong>No git, no budget.</strong> Outside a repository the hook does nothing.</li>
+<li><strong>fresh-eyes is still a model.</strong> It will miss things and occasionally invent them. The evidence rule makes the invented ones cheap to dismiss; it doesn&#39;t make the reviewer complete.</li>
+<li><strong>The brief is written by the author.</strong> &quot;Not tested&quot; is only as honest as the agent writing it. The independent check and your own read of the &quot;Read first&quot; lines are what keep it honest.</li>
+<li><strong>Read-only is an instruction for Bash.</strong> The subagent&#39;s tools include Bash, and the rule to use only read-only git commands is written in its instructions. A model can ignore an instruction. Lesson 6 is about that difference.</li>
+</ul>
+<p>Next: why some of these rules are hooks and others are just text. <a href="06-rules-it-cant-ignore.html">Lesson 6: rules it can&#39;t ignore</a>.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><a href="04-catch-the-shortcuts.html"><small>&larr; Lesson 4</small>Catch the shortcuts</a><a class="next" href="06-rules-it-cant-ignore.html"><small>Lesson 6 &rarr;</small>Rules it can't ignore</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>

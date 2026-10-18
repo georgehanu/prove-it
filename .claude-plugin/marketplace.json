@@ -1,0 +1,21 @@
+{
+  "name": "prove-it",
+  "owner": {
+    "name": "George Hanu",
+    "url": "https://x.com/georgehanu"
+  },
+  "metadata": {
+    "description": "Prove It: make your coding agent show evidence before it says done."
+  },
+  "plugins": [
+    {
+      "name": "prove-it",
+      "source": "./plugin",
+      "description": "Hooks and skills that make the agent prove its work: checks before it stops, no quiet test weakening, root causes, shortcut warnings and review briefs.",
+      "version": "1.0.0",
+      "author": { "name": "George Hanu" },
+      "homepage": "https://georgehanu.github.io/prove-it/",
+      "license": "MIT"
+    }
+  ]
+}

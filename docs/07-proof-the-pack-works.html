@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7: Proof the pack works · Prove It</title>
+<meta name="description" content="Proof the pack works. Run the test suite, try the demo tasks with and without, tune it, turn pieces off. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/07-proof-the-pack-works.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/07-proof-the-pack-works.html">
+<meta property="og:title" content="Lesson 7: Proof the pack works · Prove It">
+<meta property="og:description" content="Proof the pack works. Run the test suite, try the demo tasks with and without, tune it, turn pieces off. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 7: Proof the pack works · Prove It">
+<meta name="twitter:description" content="Proof the pack works. Run the test suite, try the demo tasks with and without, tune it, turn pieces off. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html" aria-current="page"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><a href="https://github.com/georgehanu/prove-it/blob/main/test/hooks.test.mjs">View the code &rarr;</a></div><h1>Lesson 7 · Proof the pack works</h1>
+<p>A pack that tells your agent to prove its work had better prove its own. And there&#39;s a good reason not to trust your impression of any AI tool, this one included: in <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/">METR&#39;s 2025 randomised trial</a>, experienced open-source developers took 19% longer on tasks when they used AI tools, while estimating afterwards that the tools had made them about 20% faster. METR has since published updated 2026 data, and the study page now says the 2025 results are out of date, so read them as a warning about impressions, not as a current speed number. The warning still stands: how a tool feels and what it does can point in opposite directions.</p>
+<p>So this lesson gives you three ways to check Prove It: a test suite you can run in seconds, the demo tasks run with and without the plugin, and the knobs to tune or switch off each piece in your own projects.</p>
+<h2>1. Run the test suite</h2>
+<pre><code class="hljs language-bash">git <span class="hljs-built_in">clone</span> https://github.com/georgehanu/prove-it.git
+<span class="hljs-built_in">cd</span> prove-it
+npm <span class="hljs-built_in">test</span>
+</code></pre><p>No install step: the suite uses Node&#39;s built-in test runner and the hooks have no dependencies. You need Node 22 or newer. It takes under half a minute and prints more than a hundred passing tests.</p>
+<p>There are two files:</p>
+<ul>
+<li><a href="https://github.com/georgehanu/prove-it/blob/main/test/hooks.test.mjs"><code>test/hooks.test.mjs</code></a> runs every scenario in <a href="https://github.com/georgehanu/prove-it/tree/main/test/fixtures"><code>test/fixtures/</code></a> against the real hook scripts. Each scenario gets a fresh temp project and a fresh state folder, feeds one or more JSON inputs to the hooks over stdin, exactly as Claude Code does, and checks the output: silent, <code>block</code>, <code>ask</code>, <code>deny</code>, and which words the reason contains.</li>
+<li><a href="https://github.com/georgehanu/prove-it/blob/main/test/lib.test.mjs"><code>test/lib.test.mjs</code></a> unit-tests the shared rules: which files count as code or tests, which commands count as checks, the Proof-block reader, path handling, the line diff, the Codex patch parser, session keys and the clean-up of old session files. One test also checks that guard-tests decides on the path before it reads a file.</li>
+</ul>
+<p>The scenarios cover each decision a hook can make (block, ask, deny, add a note, stay silent), each <code>.prove-it.json</code> key, and inputs that should trigger nothing. They don&#39;t cover every command or edit an agent could come up with; the Limits section of each lesson lists the gaps I know of. What&#39;s in the fixtures:</p>
+<ul>
+<li><code>stop-needs-proof</code>, fed by <code>track</code>: no edits; edits then a passing check; passing checks but no Proof block (blocked once), a <code>## Proof</code> heading at any level, <code>**Proof**</code> in bold, a sentence that only mentions proof, a <code>## Proof</code> inside a code block, <code>requireProof: false</code>, a Codex payload; a failing check reported as <code>PostToolUseFailure</code>; a check that ran before the last edit; <code>stop_hook_active</code> (from another hook, or after our own block for the same reason); checks then Proof block in one stop; the <code>Not verified:</code> escape hatch and the fake one (<code>Not verified: none</code>); <code>npm test | tail</code> hiding a failure; <code>npm test &amp;&amp; echo OK || echo FAIL</code>; a background run; checks that count only where they run (<code>echo npm test</code>, <code>grep &quot;npm test&quot;</code>, a commit message, <code>--help</code> and <code>--listTests</code> don&#39;t; <code>cd pkg &amp;&amp; npm test</code>, <code>CI=1 npx vitest run</code>, <code>pnpm -r test</code>, <code>./gradlew test</code>, <code>bundle exec rspec</code>, PowerShell&#39;s <code>npm test; &quot;exit=$LASTEXITCODE&quot;</code> and others do); custom <code>checks</code>, <code>codeGlobs</code> and <code>ignoreGlobs</code>; inputs without a <code>session_id</code>; Windows paths with a lower-case drive letter.</li>
+<li><code>guard-tests</code>: a new test (silent); removed assertions; <code>.skip</code>, <code>.only</code>, <code>{ skip: true }</code>, <code>@pytest.mark.skip</code>, <code>t.Skip</code>; <code>expect(true).toBe(true)</code>; one expected value changed; several changed in one object; an edit to fixture data (silent); a file overwritten with fewer tests; <code>codeGlobs</code> that leave the tests out (still guarded); <code>rm</code>, <code>git rm</code>, <code>Remove-Item</code> and <code>sed -i</code> on test files; <code>git rm --cached</code> and a test path that only appears inside quotes (silent); a new test file created from the shell with a heredoc, <code>tee</code>, <code>cp</code> or <code>Set-Content</code> (silent) next to the same commands overwriting an existing one (asks); <code>rm -rf node_modules</code> (silent); a CRLF file; Codex patches.</li>
+<li><code>shortcut-check</code>: each pattern; line numbers from Write, Edit, MultiEdit and Codex patches; the same words in comments and strings (silent) next to suppressions and TODOs in comments (flagged); test files and markdown (skipped).</li>
+<li><code>diff-budget</code>: the once-per-threshold rule, untracked files, the cap on untracked files, and <code>node_modules</code> and <code>ignoreGlobs</code> never being read.</li>
+<li><code>remind-after-compact</code>: after compaction, a normal start, and the <code>disable</code> switch (also tested for the Stop hook, guard-tests, shortcut-check and <code>&quot;all&quot;</code>).</li>
+</ul>
+<p>When you change a rule, add a scenario first and watch it fail. The fixtures are plain JSON; copy one and edit it.</p>
+<h2>2. Run the demo tasks, with and without</h2>
+<p>The tests prove the hooks make the right decision for a given input. They don&#39;t prove an agent behaves better. For that, run the <a href="https://github.com/georgehanu/prove-it/tree/main/tasks">demo tasks</a> yourself (setup in <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>). Each takes a few minutes:</p>
+<ol>
+<li>Copy only <code>demo/</code> to a temp folder, <code>git init</code>, commit. Do this twice. The task files stay outside the copy: they list what a proven answer shows, and an agent that reads that first makes the comparison worthless.</li>
+<li>In the first copy, start your agent <strong>without</strong> Prove It and paste only a task&#39;s request.</li>
+<li>In the second, start it <strong>with</strong> Prove It (<code>claude --plugin-dir path/to/prove-it/plugin</code>, or installed) and paste the same request.</li>
+<li>Compare the endings against the task&#39;s &quot;What a proven answer looks like&quot; list. Did it run the checks after its last edit? Did the reply map each requirement to evidence? Did a test change get past you?</li>
+</ol>
+<p>Run each pair more than once if you can. Agents vary from run to run; one good run without the plugin, or one bad run with it, tells you little.</p>
+<h3>What a headless run does</h3>
+<p>You can script the comparison with <code>claude -p</code> (non-interactive). Two things behave differently there, and it&#39;s worth knowing before you read the results:</p>
+<ul>
+<li><strong>The Stop hook works the same.</strong> The agent is sent back with the reason, runs the checks, and is asked to end with a Proof block, or with a &quot;Not verified:&quot; section if you told it not to run anything. Each reason blocks at most once per stop: sent back for the checks, then once more if the Proof block is still missing, never a third time for the same thing.</li>
+<li><strong>&quot;Ask&quot; becomes &quot;deny&quot;.</strong> Nobody is there to approve, so a test-weakening edit is refused, and the agent has to explain in its reply what it wanted to change and why. That&#39;s usually what you want in CI anyway.</li>
+</ul>
+<p>Add <code>--debug-file hooks.log</code> to see every hook decision. The per-session event log that the Stop hook reads is at <code>&lt;CLAUDE_PLUGIN_DATA&gt;/sessions/&lt;session id&gt;.events.jsonl</code>, where <code>CLAUDE_PLUGIN_DATA</code> is the plugin&#39;s folder under <code>~/.claude/plugins/data/</code>. Files untouched for 7 days are deleted.</p>
+<h2>3. Tune it: <code>.prove-it.json</code></h2>
+<p>Put a <code>.prove-it.json</code> in your project root. Every key is optional:</p>
+<pre><code class="hljs language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;checks&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;\\bnpm (run )?test\\b&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;\\bmake verify\\b&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;testGlobs&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;**/*.test.*&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;e2e/**&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;codeGlobs&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;src/**/*.{js,ts,tsx}&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;ignoreGlobs&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;**/node_modules/**&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-string">&quot;**/generated/**&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;diffBudget&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">600</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;testGuard&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ask&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;requireProof&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-literal"><span class="hljs-keyword">true</span></span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;disable&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;shortcut-check&quot;</span><span class="hljs-punctuation">]</span>
+<span class="hljs-punctuation">}</span>
+</code></pre><table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>checks</code></td>
+<td>built-in list</td>
+<td>Regexes for commands that count as a check. When set, they <strong>replace</strong> the built-in list, and the Stop hook&#39;s message lists them. They are matched against the command with quoted text, heredoc bodies and <code>-m</code>/<code>-e</code> arguments removed, and against each part between <code>&amp;&amp;</code>, <code>;</code> and pipes, so <code>^make verify</code> also matches <code>cd api &amp;&amp; make verify</code>, and <code>git commit -m &quot;make verify&quot;</code> matches nothing.</td>
+</tr>
+<tr>
+<td><code>testGlobs</code></td>
+<td><code>*.test.*</code>, <code>*.spec.*</code>, <code>*_test.*</code>, <code>test_*.py</code>, <code>test/</code>, <code>tests/</code>, <code>__tests__/</code>, <code>spec/</code> ...</td>
+<td>Which files guard-tests protects. Replaces the default list.</td>
+</tr>
+<tr>
+<td><code>codeGlobs</code></td>
+<td>common code extensions</td>
+<td>Which edits count as code for the Stop hook and shortcut-check. It doesn&#39;t narrow <code>testGlobs</code>: a test outside <code>codeGlobs</code> is still guarded.</td>
+</tr>
+<tr>
+<td><code>ignoreGlobs</code></td>
+<td><code>node_modules</code>, <code>dist</code>, <code>build</code>, <code>coverage</code>, <code>vendor</code>, <code>.git</code>, <code>*.min.js</code></td>
+<td>Never treated as code. Replaces the default list.</td>
+</tr>
+<tr>
+<td><code>diffBudget</code></td>
+<td><code>400</code></td>
+<td>Changed lines (against <code>HEAD</code>, plus new files) before the budget note. New untracked files count up to 200 files and 2 MB, never inside <code>ignoreGlobs</code>, <code>node_modules</code>, <code>dist</code>, <code>build</code>, <code>.next</code>, <code>vendor</code> or <code>target</code>; the note says when some were left out.</td>
+</tr>
+<tr>
+<td><code>testGuard</code></td>
+<td><code>&quot;ask&quot;</code></td>
+<td><code>&quot;deny&quot;</code> refuses weakening edits instead of asking.</td>
+</tr>
+<tr>
+<td><code>requireProof</code></td>
+<td><code>true</code></td>
+<td>Once checks have passed, the Stop hook also wants a Proof block in the reply (a heading named &quot;Proof&quot;, or <code>**Proof**</code> on its own line). <code>false</code> turns off only this rule; the check rules stay on.</td>
+</tr>
+<tr>
+<td><code>disable</code></td>
+<td><code>[]</code></td>
+<td>Hook names to switch off, or <code>&quot;all&quot;</code>.</td>
+</tr>
+</tbody></table>
+<p>A glob without a <code>/</code> matches the file name anywhere, like <code>.gitignore</code>. The file is read on every hook call, so changes apply straight away. If it isn&#39;t valid JSON, the defaults are used and the error is logged.</p>
+<h2>Turning things off</h2>
+<ul>
+<li><strong>One hook, one project:</strong> <code>&quot;disable&quot;: [&quot;diff-budget&quot;]</code> in <code>.prove-it.json</code>. The names are <code>track</code>, <code>stop-needs-proof</code>, <code>guard-tests</code>, <code>shortcut-check</code>, <code>diff-budget</code> and <code>remind-after-compact</code>. Disabling <code>track</code> leaves the Stop hook with nothing to read, so it stays quiet too.</li>
+<li><strong>Everything, one project:</strong> <code>&quot;disable&quot;: [&quot;all&quot;]</code>.</li>
+<li><strong>The plugin, for now:</strong> <code>/plugin disable prove-it@prove-it</code>, and <code>/plugin enable prove-it@prove-it</code> to bring it back.</li>
+<li><strong>For good:</strong> <code>/plugin uninstall prove-it@prove-it</code>. The state folder can be deleted; it holds only the per-session logs.</li>
+</ul>
+<h2>What&#39;s left to you</h2>
+<p>The pack makes the agent run checks, protects the tests, flags shortcuts, and hands you a brief. It can&#39;t decide whether a test checks the right thing, whether the root cause is really the root cause, or whether the change is what your users needed. Those are still your calls. The aim is that you spend your review time on them, and not on finding out whether the tests were run.</p>
+<p>If the pack helped, or got in your way, I&#39;d like to hear which piece and why.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><a href="06-rules-it-cant-ignore.html"><small>&larr; Lesson 6</small>Rules it can't ignore</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>

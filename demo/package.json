@@ -1,0 +1,11 @@
+{
+  "name": "tiny-invoice",
+  "version": "1.0.0",
+  "description": "A small invoicing module: money in cents, discounts, tax, due dates, pagination.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}

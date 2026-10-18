@@ -1,0 +1,146 @@
+[
+  {
+    "name": "not a git repository: silent",
+    "config": { "diffBudget": 5 },
+    "files": { "src/a.js": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n" },
+    "steps": [{ "hook": "diff-budget", "input": { "tool_name": "Write", "tool_input": { "file_path": "$CWD/src/a.js", "content": "x" } }, "expect": { "silent": true } }]
+  },
+  {
+    "name": "small diff: silent",
+    "git": true,
+    "files": { "src/a.js": "const a = 1;\n" },
+    "steps": [
+      { "write": { "src/a.js": "const a = 2;\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js", "old_string": "1", "new_string": "2" } }, "expect": { "silent": true } }
+    ]
+  },
+  {
+    "name": "over budget: tells the agent once per threshold",
+    "git": true,
+    "config": { "diffBudget": 10 },
+    "files": { "src/a.js": "a\n" },
+    "steps": [
+      { "write": { "src/a.js": "a\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "includes": ["11 changed lines", "budget 10", "split"] } },
+      { "write": { "src/a.js": "a\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "silent": true } },
+      { "write": { "src/a.js": "a\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "includes": ["21 changed lines"] } }
+    ]
+  },
+  {
+    "name": "new untracked files count",
+    "git": true,
+    "config": { "diffBudget": 5 },
+    "files": { "README.md": "x\n" },
+    "steps": [
+      { "write": { "src/new.js": "1\n2\n3\n4\n5\n6\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Write", "tool_input": { "file_path": "$CWD/src/new.js" } }, "expect": { "includes": ["6 changed lines"] } }
+    ]
+  },
+  {
+    "name": "back under budget, then over again: tells again",
+    "git": true,
+    "config": { "diffBudget": 5 },
+    "files": { "src/a.js": "a\n" },
+    "steps": [
+      { "write": { "src/a.js": "a\n1\n2\n3\n4\n5\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "includes": ["5 changed lines"] } },
+      { "write": { "src/a.js": "a\n1\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "silent": true } },
+      { "write": { "src/a.js": "a\n1\n2\n3\n4\n5\n6\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Edit", "tool_input": { "file_path": "$CWD/src/a.js" } }, "expect": { "includes": ["6 changed lines"] } }
+    ]
+  },
+  {
+    "name": "Bash calls are ignored",
+    "git": true,
+    "config": { "diffBudget": 1 },
+    "files": { "src/a.js": "a\n" },
+    "steps": [
+      { "write": { "src/a.js": "b\nc\nd\n" } },
+      { "hook": "diff-budget", "input": { "tool_name": "Bash", "tool_input": { "command": "ls" } }, "expect": { "silent": true } }
+    ]
+  },
+  {
+    "name": "many untracked files: only the first 200 are read, and the note says the rest were not counted",
+    "git": true,
+    "config": {
+      "diffBudget": 100
+    },
+    "files": {
+      "README.md": "x\n"
+    },
+    "steps": [
+      {
+        "writeMany": {
+          "pattern": "gen/f{n}.js",
+          "count": 260,
+          "content": "1\n2\n"
+        }
+      },
+      {
+        "hook": "diff-budget",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/gen/f0001.js"
+          }
+        },
+        "expect": {
+          "includes": [
+            "400 changed lines",
+            "60 untracked files were not counted",
+            "200-file / 2 MB"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "untracked node_modules and ignoreGlobs are never read, even without a .gitignore",
+    "git": true,
+    "config": {
+      "diffBudget": 5,
+      "ignoreGlobs": [
+        "**/node_modules/**",
+        "**/generated/**"
+      ]
+    },
+    "files": {
+      "README.md": "x\n"
+    },
+    "steps": [
+      {
+        "writeMany": {
+          "pattern": "node_modules/pkg/f{n}.js",
+          "count": 30,
+          "content": "1\n2\n3\n"
+        }
+      },
+      {
+        "write": {
+          "generated/client.js": "1\n2\n3\n4\n5\n6\n7\n8\n9\n",
+          "src/new.js": "1\n2\n3\n4\n5\n6\n"
+        }
+      },
+      {
+        "hook": "diff-budget",
+        "input": {
+          "tool_name": "Write",
+          "tool_input": {
+            "file_path": "$CWD/src/new.js"
+          }
+        },
+        "expect": {
+          "includes": [
+            "6 changed lines"
+          ],
+          "excludes": [
+            "not counted"
+          ]
+        }
+      }
+    ]
+  }
+]

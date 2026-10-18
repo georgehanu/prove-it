@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2: Tests that can fail · Prove It</title>
+<meta name="description" content="Tests that can fail. Edits that weaken a test wait for you. Red before green, and a mutation check. Part of Prove It: your coding agent says it's done, make it prove it.">
+<link rel="canonical" href="https://georgehanu.github.io/prove-it/02-tests-that-can-fail.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://georgehanu.github.io/prove-it/02-tests-that-can-fail.html">
+<meta property="og:title" content="Lesson 2: Tests that can fail · Prove It">
+<meta property="og:description" content="Tests that can fail. Edits that weaken a test wait for you. Red before green, and a mutation check. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta property="og:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@georgehanu">
+<meta name="twitter:title" content="Lesson 2: Tests that can fail · Prove It">
+<meta name="twitter:description" content="Tests that can fail. Edits that weaken a test wait for you. Red before green, and a mutation check. Part of Prove It: your coding agent says it's done, make it prove it.">
+<meta name="twitter:image" content="https://georgehanu.github.io/og/guides/prove-it.png">
+<meta name="twitter:image:alt" content="Prove It: your coding agent says it's done. Make it prove it. Coding with AI, by George Hanu.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315803d'/><path d='M27 52l15 15 32-34' fill='none' stroke='white' stroke-width='11' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><span class="loop">&#10003;</span> Prove It</a>
+  <nav class="top-links">
+    <a href="https://georgehanu.github.io/">All guides</a>
+    <a href="https://github.com/georgehanu/prove-it">GitHub</a>
+    <a class="follow" href="https://x.com/georgehanu">Follow @georgehanu</a>
+  </nav>
+</header>
+<div class="layout">
+  <aside class="side"><div class="side-title">Lessons</div><a href="01-done-means-proven.html"><span>1</span>Done means proven</a>
+<a href="02-tests-that-can-fail.html" aria-current="page"><span>2</span>Tests that can fail</a>
+<a href="03-find-the-cause.html"><span>3</span>Find the cause, not a patch</a>
+<a href="04-catch-the-shortcuts.html"><span>4</span>Catch the shortcuts</a>
+<a href="05-a-diff-someone-can-review.html"><span>5</span>A diff someone can review</a>
+<a href="06-rules-it-cant-ignore.html"><span>6</span>Rules it can't ignore</a>
+<a href="07-proof-the-pack-works.html"><span>7</span>Proof the pack works</a></aside>
+  <main class="lesson"><div class="meta"><span>Demo</span><a class="task" href="https://github.com/georgehanu/prove-it/blob/main/tasks/02-per-line-tax.md">02-per-line-tax.md</a><a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/guard-tests.mjs">View the code &rarr;</a></div><h1>Lesson 2 · Tests that can fail</h1>
+<p>Lesson 1 made the agent run the checks before it finishes. That only helps if the checks can fail. A test suite is easy to turn green without fixing anything: change the expected value, skip the test, loosen the matcher, or delete the file.</p>
+<p>Agents do this more than you&#39;d hope. The <a href="https://arxiv.org/abs/2510.20270">ImpossibleBench</a> study built coding tasks where the specification and the unit tests contradict each other, so the only way to pass is to cheat. The best-performing model in the study still &quot;passed&quot; 54% of the tasks in the conflicting-tests variant of SWE-bench. Every one of those passes meant bending the tests, or bending the code around them, instead of doing what was asked. The same paper found that making the tests read-only stopped test edits for most models, while honest solutions still worked. It didn&#39;t help as much with the models that mostly special-cased the tests in the code instead.</p>
+<p>Read-only tests are too strict for daily work, because sometimes a test really is wrong or the requirement really changed. So Prove It does the next best thing: an edit that makes a test weaker stops and waits for a person.</p>
+<h2>What &quot;weaker&quot; means</h2>
+<p>The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/hooks/guard-tests.mjs"><code>guard-tests</code> hook</a> runs before every edit (<code>PreToolUse</code> on Write, Edit and MultiEdit) to a test file. Test files are found by name: <code>*.test.*</code>, <code>*.spec.*</code>, <code>*_test.*</code>, <code>test_*.py</code>, and anything under <code>test/</code>, <code>tests/</code>, <code>__tests__/</code> or <code>spec/</code>. You can change the list in <code>.prove-it.json</code>.</p>
+<p>It rebuilds the file before and after the edit and compares them. An edit is put to you when it:</p>
+<ul>
+<li><strong>removes assertions</strong>: fewer <code>expect(</code>, <code>assert</code>, <code>t.equal(</code>, <code>self.assertEqual(</code> and similar than before;</li>
+<li><strong>removes tests</strong>: fewer <code>test(</code>, <code>it(</code>, <code>def test_</code>, <code>func Test</code> than before (this also covers overwriting a test file with a shorter one);</li>
+<li><strong>adds skip, only or todo</strong>: <code>.skip</code>, <code>.only</code>, <code>.todo</code>, <code>xit</code>, <code>{ skip: true }</code>, <code>@pytest.mark.skip</code>, <code>t.Skip()</code>;</li>
+<li><strong>adds an assertion that can&#39;t fail</strong>: <code>expect(true).toBe(true)</code>, <code>assert.equal(total, total)</code>, <code>assert True</code>;</li>
+<li><strong>changes only an expected value</strong>: the same assertion, the same inputs, a different expected number or string.</li>
+</ul>
+<p>Deleting a test file with <code>rm</code>, <code>git rm</code> or <code>Remove-Item</code> is put to you as well (<code>git rm --cached</code> only untracks it, so that passes), and so is rewriting an existing one from the shell (<code>sed -i</code>, a <code>&gt;</code> redirect, <code>tee</code>, <code>cp</code>, <code>Set-Content</code>), because a change made that way can&#39;t be checked: the message says exactly that and points the agent to the Edit tool. Creating a new test file from the shell is fine; it can&#39;t make anything weaker.</p>
+<p>Adding tests, adding assertions and renaming things all pass silently. The hook only speaks up when the suite gets easier to pass, or when what it expects changes.</p>
+<h2>&quot;Ask&quot;, not &quot;deny&quot;</h2>
+<p>When the hook finds something, it returns <code>permissionDecision: &quot;ask&quot;</code> with the reason. Claude Code then shows you the edit and the reason, and you decide:</p>
+<pre><code class="hljs language-text">Prove It: this change to test/invoice.test.js changes what the tests expect:
+- changed an expected value: `assert.deepEqual(invoiceTotals(consulting), { subtotal: 3750,
+  discount: 0, tax: 788, total: 4538 });` -&gt; `... tax: 789, total: 4539 });`
+A person must approve it. If the requirement really changed, explain why in one line;
+otherwise cancel and fix the code, not the test.
+</code></pre><p>The &quot;changed an expected value&quot; check is the important one, and it&#39;s the hardest to spot in a review. A one-character diff from <code>788</code> to <code>789</code> looks like a typo fix. It&#39;s often the agent copying whatever the code now prints into the assertion, which turns the test into a recording of the current behaviour, bugs included.</p>
+<p>But changing an expected value is sometimes exactly right. That&#39;s what the demo task is about.</p>
+<h2>The fails-first skill</h2>
+<p>The hook stops the obvious damage. The <a href="https://github.com/georgehanu/prove-it/blob/main/plugin/skills/fails-first/SKILL.md"><code>fails-first</code> skill</a> is about writing tests that are worth protecting:</p>
+<ol>
+<li><strong>Write the test first</strong>, for the behaviour that was asked for, and <strong>show it failing</strong> for the right reason.</li>
+<li>Make the change, show it passing, run the whole suite.</li>
+<li><strong>Mutation check</strong>: break the line the test is about (flip <code>&lt;</code> to <code>&lt;=</code>, drop a <code>+ 1</code>), run the test, see it go red, restore. If it stays green with the line broken, the test isn&#39;t testing that line.</li>
+<li><strong>Never edit an existing assertion quietly.</strong> If a test is wrong, say which one, what it expects, and why the new value is right, with the arithmetic.</li>
+<li><strong>Don&#39;t mock what you&#39;re testing.</strong> A test that repeats the implementation, same formula and same mocks, proves nothing. Work out the expected value by hand and write it as a literal.</li>
+<li><strong>&quot;No testable logic&quot; is an allowed answer.</strong> For a copy change or a colour, say so and say how you checked it. Don&#39;t invent a test to fill a quota.</li>
+</ol>
+<h2>The demo: a test that should change</h2>
+<p>In <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/02-per-line-tax.md">task 2</a> the accountant wants VAT rounded per invoice line instead of once on the total. That&#39;s a real requirement change, and two expected values in <code>test/invoice.test.js</code> should move by a cent.</p>
+<p>Here&#39;s the arithmetic for the first one. Three lines of 12.50 at 21% is 2.625 tax per line. Rounded per line, that&#39;s 2.63 three times, 7.89. Rounded once on the 37.50 total, it was 7.875, so 7.88. The test said 788 cents; the right answer is now 789.</p>
+<p>So the edit from <code>788</code> to <code>789</code> is correct. What makes it trustworthy is the line above, worked out by hand, not the fact that the suite went green. A good reply shows that arithmetic. A weak reply says &quot;updated the expected values to match the new output&quot;.</p>
+<p>Here is what happened when an agent got the request &quot;make the suite green by updating the expected values to whatever the code now returns&quot; with the plugin on, in a headless run where nobody could approve. <em>Shortened:</em></p>
+<pre><code class="hljs language-text">agent  I couldn&#x27;t update the tests. A Prove It hook blocked both edits to
+       test/invoice.test.js because they change expected values, and a person has to
+       approve that. I didn&#x27;t try to get around it, for example by editing the file
+       through sed.
+       Each 1250¢ line carries 262.5¢ of tax at 21%, which rounds up to 263¢ per line,
+       so the three lines total 789¢. Taxing the 3750¢ subtotal in one go gave 787.5¢,
+       which rounded to the old 788¢.
+       If you approve the edits, I&#x27;ll make these two changes and rerun npm test.
+</code></pre><p>That&#39;s the behaviour you want: the change explained with the arithmetic, and the decision left to you.</p>
+<h2>Try it</h2>
+<ol>
+<li>Make a fresh copy of the demo (see <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/README.md"><code>tasks/README.md</code></a>) and start Claude Code with the plugin.</li>
+<li>Paste the request from <a href="https://github.com/georgehanu/prove-it/blob/main/tasks/02-per-line-tax.md">task 2</a>.</li>
+<li>When the edit to <code>test/invoice.test.js</code> stops for your approval, read the reason. Before you approve, check the agent showed the arithmetic for the new value. If it didn&#39;t, decline and ask for it.</li>
+<li>For contrast, ask in a fresh copy: &quot;the discount test is flaky, skip it for now&quot;. Watch the <code>.skip</code> get stopped.</li>
+</ol>
+<h2>Limits</h2>
+<ul>
+<li><strong>It reads text, it doesn&#39;t run your tests.</strong> It counts assertions and compares lines. A matcher swapped for a weaker one with the same count, <code>toBe(1999)</code> to <code>toBeGreaterThan(0)</code>, is not caught. Neither is an assertion moved into a helper that never runs.</li>
+<li><strong>&quot;Changed an expected value&quot; needs the assertion on the same line</strong>, or inside an expected object that starts on the assertion&#39;s line. An expected value built three lines earlier in a variable looks like any other edit.</li>
+<li><strong>Fixtures aren&#39;t tests.</strong> Editing <code>test/fixtures/invoice.json</code> to match wrong output isn&#39;t flagged. Keep fixtures small and review them like tests.</li>
+<li><strong>In headless mode there&#39;s nobody to ask.</strong> With <code>claude -p</code>, an &quot;ask&quot; becomes a denial, as in the run above. In Codex, hooks can only deny, so the guard denies there too. If you want that everywhere, set <code>&quot;testGuard&quot;: &quot;deny&quot;</code> in <code>.prove-it.json</code>.</li>
+<li><strong>The person still decides.</strong> If you approve every prompt without reading it, the hook has only slowed you down.</li>
+</ul>
+<p>Next: when a test fails for a real reason, the fix should target the cause. <a href="03-find-the-cause.html">Lesson 3: find the cause, not a patch</a>.</p>
+<aside class="cta"><strong>Found this useful?</strong> I post small, practical AI coding examples most days.
+  <a href="https://x.com/georgehanu">Follow @georgehanu on X</a></aside><nav class="pager"><a href="01-done-means-proven.html"><small>&larr; Lesson 1</small>Done means proven</a><a class="next" href="03-find-the-cause.html"><small>Lesson 3 &rarr;</small>Find the cause, not a patch</a></nav></main>
+</div>
+<footer class="foot">
+  <p>Written by <a href="https://x.com/georgehanu">George Hanu</a>. I teach developers to build software with AI: small examples, explained clearly.</p>
+  <p><a href="https://georgehanu.github.io/">More free guides</a> · <a href="https://x.com/georgehanu">Follow on X</a> · <a href="https://github.com/georgehanu/prove-it">Source on GitHub</a> · MIT licensed</p>
+</footer>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(button.getAttribute("data-copy"));
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+</script>
+</body>
+</html>
